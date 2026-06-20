@@ -44,7 +44,7 @@ Exact seek needs the HTML5 video path. Keyboard fallback cannot reliably jump to
 This is Intel and Apple Silicon compatible. It uses built-in macOS tools: Bash, Safari, `osascript`, and JavaScript for Automation.
 
 ```bash
-git clone <your-github-repo-url>
+git clone https://github.com/jgarbarino3/alexa-safari-remote.git
 cd alexa-safari-remote
 ./install.sh
 ```
@@ -142,6 +142,16 @@ It is useful for confirming whether Alexa/TRIGGERcmd reached the Mac.
 Install the TRIGGERcmd Mac agent on the Mac that is connected to the TV. TRIGGERcmd provides separate Mac downloads for Apple Silicon and Intel.
 
 Use the Intel Mac agent on your older Mac.
+
+If Alexa is already linked to the TRIGGERcmd account, keep using that same
+TRIGGERcmd account on the TV Mac. Do not create a second TRIGGERcmd account
+unless you also want to unlink and relink the Alexa skill.
+
+For the old Intel Mac handoff, follow:
+
+```text
+docs/move-to-old-intel-mac.md
+```
 
 Create commands matching the examples in:
 
