@@ -1,8 +1,14 @@
 .DS_Store
+.aws-bridge-build/
+alexa-skill/.env.generated
+alexa-skill/.ask/
+*.zip
 node_modules/
 .env
 .env.*
 !.env.example
 *.log
+__pycache__/
+*.pyc
 dist/
 coverage/

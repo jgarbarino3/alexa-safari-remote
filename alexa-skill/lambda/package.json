@@ -5,10 +5,14 @@
   "main": "index.js",
   "type": "commonjs",
   "scripts": {
-    "test": "node index.js --selftest"
+    "selftest": "node index.js --selftest",
+    "test": "node test.js"
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "@aws-sdk/client-sqs": "^3.600.0"
   },
   "license": "MIT"
 }

@@ -8,10 +8,10 @@ The first working path is:
 Alexa -> TRIGGERcmd -> safari-remote -> Safari video
 ```
 
-The phase-two path is:
+The preferred no-rate-limit path is:
 
 ```text
-Alexa custom skill -> bridge endpoint -> safari-remote -> Safari video
+Alexa custom skill -> AWS Lambda -> SQS -> Mac agent -> safari-remote -> Safari video
 ```
 
 ## What It Controls
@@ -139,6 +139,10 @@ It is useful for confirming whether Alexa/TRIGGERcmd reached the Mac.
 
 ## TRIGGERcmd Setup
 
+TRIGGERcmd remains a useful fallback because it is quick to set up and uses the
+Alexa Smart Home skill. Its free plan can be rate-limited for rapid TV controls,
+so the AWS SQS bridge is the preferred path once local Safari control is proven.
+
 Install the TRIGGERcmd Mac agent on the Mac that is connected to the TV. TRIGGERcmd provides separate Mac downloads for Apple Silicon and Intel.
 
 Use the Intel Mac agent on your older Mac.
@@ -180,7 +184,7 @@ That phrasing is not beautiful, but it is the fastest reliable bridge.
 
 ## Custom Alexa Skill
 
-The phase-two scaffold lives in:
+The custom skill scaffold lives in:
 
 ```text
 alexa-skill/
@@ -190,15 +194,27 @@ It includes:
 
 - an Alexa interaction model using invocation name `tv remote`
 - a Lambda handler that parses play/pause/seek commands
-- a bridge contract: `POST { "action": "seek", "seconds": 754 }`
+- an AWS SQS bridge path for the no-rate-limit setup
+- the older HTTPS bridge contract: `POST { "action": "seek", "seconds": 754 }`
 
 Important: Alexa custom skill code runs in the cloud. It cannot directly execute commands on your Mac unless we provide a bridge. The cleanest bridge choices are:
 
-1. TRIGGERcmd API or bookmark URL
-2. a hosted relay that the Mac polls
-3. a secure tunnel or VPN endpoint
+1. AWS Lambda + SQS, with this Mac polling the queue
+2. TRIGGERcmd API or bookmark URL
+3. a hosted relay that the Mac polls
+4. a secure tunnel or VPN endpoint
 
-The custom skill is worth building after local Safari control is proven on the actual streaming sites.
+For the AWS bridge setup, follow:
+
+```text
+docs/aws-sqs-bridge-current-mac-setup.md
+```
+
+For the newer Mac / iPhone Mirroring handoff, follow:
+
+```text
+docs/newer-mac-alexa-handoff.md
+```
 
 ## Project Terms
 

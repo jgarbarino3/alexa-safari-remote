@@ -1,5 +1,8 @@
 'use strict';
 
+let SQSClient;
+let SendMessageCommand;
+
 const ACTION_BY_INTENT = {
   PlayIntent: { action: 'play' },
   PauseIntent: { action: 'pause' },
@@ -65,6 +68,11 @@ function buildMediaAction(intent) {
 }
 
 async function sendToBridge(mediaAction) {
+  if (process.env.ALEXA_SAFARI_REMOTE_QUEUE_URL) {
+    await sendToSqs(mediaAction);
+    return;
+  }
+
   const endpoint = process.env.REMOTE_ENDPOINT_URL;
   if (!endpoint) {
     console.log('REMOTE_ENDPOINT_URL not set; dry-run action:', JSON.stringify(mediaAction));
@@ -88,6 +96,24 @@ async function sendToBridge(mediaAction) {
   }
 }
 
+async function sendToSqs(mediaAction) {
+  if (!SQSClient || !SendMessageCommand) {
+    ({ SQSClient, SendMessageCommand } = require('@aws-sdk/client-sqs'));
+  }
+
+  const client = new SQSClient({});
+  const message = {
+    ...mediaAction,
+    source: 'alexa-custom-skill',
+    createdAt: new Date().toISOString(),
+  };
+
+  await client.send(new SendMessageCommand({
+    QueueUrl: process.env.ALEXA_SAFARI_REMOTE_QUEUE_URL,
+    MessageBody: JSON.stringify(message),
+  }));
+}
+
 function slotValue(intent, slotName) {
   const slot = intent && intent.slots && intent.slots[slotName];
   return slot && slot.value ? String(slot.value).toLowerCase() : '';
@@ -100,9 +126,13 @@ function positiveNumber(value) {
 }
 
 function spokenConfirmation(mediaAction) {
+  if (mediaAction.action === 'play') return 'Playing.';
+  if (mediaAction.action === 'pause') return 'Paused.';
+  if (mediaAction.action === 'toggle') return 'Toggled playback.';
   if (mediaAction.action === 'back') return `Rewinding ${mediaAction.seconds} seconds.`;
   if (mediaAction.action === 'forward') return `Skipping forward ${mediaAction.seconds} seconds.`;
   if (mediaAction.action === 'seek') return `Going to ${formatTime(mediaAction.seconds)}.`;
+  if (mediaAction.action === 'fullscreen') return 'Fullscreen.';
   if (mediaAction.action === 'escape') return 'Exiting fullscreen.';
   return `${mediaAction.action}.`;
 }

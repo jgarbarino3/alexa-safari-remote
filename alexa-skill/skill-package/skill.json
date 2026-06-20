@@ -1,0 +1,29 @@
+{
+  "manifest": {
+    "publishingInformation": {
+      "locales": {
+        "en-US": {
+          "name": "Safari TV Remote",
+          "summary": "Control Safari playback on the TV Mac.",
+          "description": "Controls Safari play, pause, rewind, forward, fullscreen, and exit fullscreen on the Mac connected to the TV.",
+          "examplePhrases": [
+            "Alexa, ask tv remote to pause",
+            "Alexa, ask tv remote to play",
+            "Alexa, ask tv remote to rewind ten seconds"
+          ]
+        }
+      },
+      "isAvailableWorldwide": true,
+      "testingInstructions": "Open a Safari video on the TV Mac, then ask the skill to pause, play, rewind, forward, fullscreen, or exit fullscreen.",
+      "category": "STREAMING_SERVICE"
+    },
+    "apis": {
+      "custom": {
+        "endpoint": {
+          "uri": "arn:aws:lambda:us-east-1:000000000000:function:alexa-safari-remote-skill"
+        }
+      }
+    },
+    "manifestVersion": "1.0"
+  }
+}

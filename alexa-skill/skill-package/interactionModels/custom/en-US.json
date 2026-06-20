@@ -1,0 +1,126 @@
+{
+  "interactionModel": {
+    "languageModel": {
+      "invocationName": "tv remote",
+      "intents": [
+        {
+          "name": "PlayIntent",
+          "samples": [
+            "play",
+            "resume",
+            "start playing"
+          ]
+        },
+        {
+          "name": "PauseIntent",
+          "samples": [
+            "pause",
+            "pause the video",
+            "stop the video"
+          ]
+        },
+        {
+          "name": "ToggleIntent",
+          "samples": [
+            "toggle",
+            "play pause",
+            "toggle playback"
+          ]
+        },
+        {
+          "name": "RelativeSeekIntent",
+          "slots": [
+            {
+              "name": "direction",
+              "type": "SEEK_DIRECTION"
+            },
+            {
+              "name": "amount",
+              "type": "AMAZON.NUMBER"
+            },
+            {
+              "name": "unit",
+              "type": "SEEK_UNIT"
+            }
+          ],
+          "samples": [
+            "{direction}",
+            "{direction} {amount}",
+            "{direction} {amount} {unit}",
+            "{direction} by {amount} {unit}"
+          ]
+        },
+        {
+          "name": "AbsoluteSeekIntent",
+          "slots": [
+            {
+              "name": "hours",
+              "type": "AMAZON.NUMBER"
+            },
+            {
+              "name": "minutes",
+              "type": "AMAZON.NUMBER"
+            },
+            {
+              "name": "seconds",
+              "type": "AMAZON.NUMBER"
+            }
+          ],
+          "samples": [
+            "go to {minutes} minutes",
+            "go to {minutes} minutes {seconds} seconds",
+            "go to {hours} hours {minutes} minutes",
+            "jump to {minutes} minutes",
+            "jump to {minutes} minutes {seconds} seconds",
+            "seek to {minutes} minutes",
+            "seek to {minutes} minutes {seconds} seconds"
+          ]
+        },
+        {
+          "name": "FullscreenIntent",
+          "samples": [
+            "fullscreen",
+            "go fullscreen",
+            "make it fullscreen"
+          ]
+        },
+        {
+          "name": "EscapeIntent",
+          "samples": [
+            "escape",
+            "exit fullscreen",
+            "leave fullscreen"
+          ]
+        },
+        {
+          "name": "AMAZON.HelpIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.CancelIntent",
+          "samples": []
+        },
+        {
+          "name": "AMAZON.StopIntent",
+          "samples": []
+        }
+      ],
+      "types": [
+        {
+          "name": "SEEK_DIRECTION",
+          "values": [
+            { "name": { "value": "back", "synonyms": ["rewind", "go back"] } },
+            { "name": { "value": "forward", "synonyms": ["skip", "skip ahead", "ahead"] } }
+          ]
+        },
+        {
+          "name": "SEEK_UNIT",
+          "values": [
+            { "name": { "value": "seconds", "synonyms": ["second"] } },
+            { "name": { "value": "minutes", "synonyms": ["minute"] } }
+          ]
+        }
+      ]
+    }
+  }
+}

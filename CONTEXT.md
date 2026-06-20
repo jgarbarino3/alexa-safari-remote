@@ -10,6 +10,16 @@ The macOS command-line script that turns a normalized media action into Safari v
 
 The service that invokes the Local Controller from a voice command. TRIGGERcmd is the first Bridge; a custom Alexa skill can be a later Bridge.
 
+### AWS SQS Bridge
+
+The preferred custom Alexa skill Bridge: Lambda writes Media Actions to SQS, and
+the TV Mac polls the queue with a LaunchAgent.
+
+### Mac Agent
+
+The lightweight process on the TV Mac that long-polls SQS and runs
+`safari-remote`.
+
 ### Media Action
 
 A stable command understood by the Local Controller: `play`, `pause`, `toggle`, `back`, `forward`, `seek`, `fullscreen`, or `escape`.
