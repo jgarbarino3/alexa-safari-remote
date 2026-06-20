@@ -178,6 +178,20 @@ Alexa, turn on Safari pause
 
 That phrasing is not beautiful, but it is the fastest reliable bridge.
 
+For nicer spoken commands, add Alexa Routines that use short voice phrases and
+run the working TRIGGERcmd phrase as a Custom action:
+
+| Say this | Custom action |
+| --- | --- |
+| Alexa, Safari pause | `turn on safari pause` |
+| Alexa, Safari play | `turn on safari play` |
+| Alexa, Safari skip | `turn on safari forward ten` |
+| Alexa, Safari rewind | `turn on safari rewind ten` |
+
+Optional routines can map `Alexa, Safari fullscreen` to
+`turn on safari fullscreen` and `Alexa, Safari exit fullscreen` to
+`turn on safari exit fullscreen`.
+
 ## Custom Alexa Skill
 
 The phase-two scaffold lives in:

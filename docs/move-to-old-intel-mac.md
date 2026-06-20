@@ -136,12 +136,32 @@ Alexa, turn on safari fullscreen
 Alexa, turn on safari exit fullscreen
 ```
 
+For shorter spoken commands, create Alexa Routines on the already-linked Alexa
+account. Each routine uses a short voice phrase and a Custom action that says
+the working TRIGGERcmd phrase:
+
+| Routine name | Voice phrase | Custom action |
+| --- | --- | --- |
+| Safari pause | `safari pause` | `turn on safari pause` |
+| Safari play | `safari play` | `turn on safari play` |
+| Safari skip | `safari skip` | `turn on safari forward ten` |
+| Safari rewind | `safari rewind` | `turn on safari rewind ten` |
+
+After that, the spoken commands are:
+
+```text
+Alexa, safari pause
+Alexa, safari play
+Alexa, safari skip
+Alexa, safari rewind
+```
+
 ## Verify End To End
 
 Open a Safari video on the old Mac, then say:
 
 ```text
-Alexa, turn on safari pause
+Alexa, safari pause
 ```
 
 Check the local command log:
