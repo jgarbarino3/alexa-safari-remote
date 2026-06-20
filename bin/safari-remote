@@ -1,7 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE="${BASH_SOURCE[0]}"
+while [[ -L "$SOURCE" ]]; do
+  DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  SOURCE="$(readlink "$SOURCE")"
+  [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
+done
+
+SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 CONTROLLER="$SCRIPT_DIR/../lib/safari-media-control.jxa.js"
 
 usage() {
@@ -15,6 +22,7 @@ Usage:
   safari-remote seek <seconds|mm:ss|hh:mm:ss>
   safari-remote fullscreen
   safari-remote escape
+  safari-remote selftest
 
 Examples:
   safari-remote pause
@@ -94,6 +102,9 @@ case "$action" in
     ;;
   escape|esc)
     exec osascript -l JavaScript "$CONTROLLER" escape
+    ;;
+  selftest)
+    exec osascript -l JavaScript "$CONTROLLER" __selftest
     ;;
   help|-h|--help)
     usage

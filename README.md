@@ -26,6 +26,7 @@ The local command supports:
 - `seek 12:34`
 - `fullscreen`
 - `escape`
+- `selftest`
 
 It first tries to control the active HTML5 `<video>` element in Safari. That is the reliable path for streaming sites with different button layouts, because it changes the actual video state instead of clicking on Peacock, Disney, Netflix, or YouTube controls by coordinate.
 
@@ -110,6 +111,7 @@ safari-remote forward 10
 safari-remote seek 12:34
 safari-remote fullscreen
 safari-remote escape
+safari-remote selftest
 ```
 
 Successful HTML5 control returns values like:
