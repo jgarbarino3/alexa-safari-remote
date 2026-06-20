@@ -1,0 +1,65 @@
+[
+  {
+    "trigger": "Safari pause",
+    "command": "$HOME/.local/bin/safari-remote pause",
+    "ground": "foreground",
+    "voice": "true",
+    "voiceReply": "Paused Safari"
+  },
+  {
+    "trigger": "Safari play",
+    "command": "$HOME/.local/bin/safari-remote play",
+    "ground": "foreground",
+    "voice": "true",
+    "voiceReply": "Playing Safari"
+  },
+  {
+    "trigger": "Safari toggle",
+    "command": "$HOME/.local/bin/safari-remote toggle",
+    "ground": "foreground",
+    "voice": "true",
+    "voiceReply": "Toggled Safari"
+  },
+  {
+    "trigger": "Safari rewind ten",
+    "command": "$HOME/.local/bin/safari-remote back 10",
+    "ground": "foreground",
+    "voice": "true",
+    "voiceReply": "Rewound ten seconds"
+  },
+  {
+    "trigger": "Safari forward ten",
+    "command": "$HOME/.local/bin/safari-remote forward 10",
+    "ground": "foreground",
+    "voice": "true",
+    "voiceReply": "Skipped forward ten seconds"
+  },
+  {
+    "trigger": "Safari rewind thirty",
+    "command": "$HOME/.local/bin/safari-remote back 30",
+    "ground": "foreground",
+    "voice": "true",
+    "voiceReply": "Rewound thirty seconds"
+  },
+  {
+    "trigger": "Safari forward thirty",
+    "command": "$HOME/.local/bin/safari-remote forward 30",
+    "ground": "foreground",
+    "voice": "true",
+    "voiceReply": "Skipped forward thirty seconds"
+  },
+  {
+    "trigger": "Safari fullscreen",
+    "command": "$HOME/.local/bin/safari-remote fullscreen",
+    "ground": "foreground",
+    "voice": "true",
+    "voiceReply": "Fullscreen"
+  },
+  {
+    "trigger": "Safari exit fullscreen",
+    "command": "$HOME/.local/bin/safari-remote escape",
+    "ground": "foreground",
+    "voice": "true",
+    "voiceReply": "Exited fullscreen"
+  }
+]

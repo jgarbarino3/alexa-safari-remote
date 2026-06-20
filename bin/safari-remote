@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+CONTROLLER="$SCRIPT_DIR/../lib/safari-media-control.jxa.js"
+
+usage() {
+  cat <<'EOF'
+Usage:
+  safari-remote toggle
+  safari-remote play
+  safari-remote pause
+  safari-remote back [seconds]
+  safari-remote forward [seconds]
+  safari-remote seek <seconds|mm:ss|hh:mm:ss>
+  safari-remote fullscreen
+  safari-remote escape
+
+Examples:
+  safari-remote pause
+  safari-remote back 10
+  safari-remote forward 30
+  safari-remote seek 12:34
+EOF
+}
+
+to_seconds() {
+  local input="${1:-}"
+  local h m s
+
+  if [[ -z "$input" ]]; then
+    echo "Missing time value" >&2
+    return 2
+  fi
+
+  input="${input//[[:space:]]/}"
+
+  if [[ "$input" =~ ^[0-9]+$ ]]; then
+    printf '%s\n' "$input"
+    return 0
+  fi
+
+  if [[ "$input" =~ ^([0-9]+):([0-9]{1,2})$ ]]; then
+    m="${BASH_REMATCH[1]}"
+    s="${BASH_REMATCH[2]}"
+    printf '%s\n' "$((10#$m * 60 + 10#$s))"
+    return 0
+  fi
+
+  if [[ "$input" =~ ^([0-9]+):([0-9]{1,2}):([0-9]{1,2})$ ]]; then
+    h="${BASH_REMATCH[1]}"
+    m="${BASH_REMATCH[2]}"
+    s="${BASH_REMATCH[3]}"
+    printf '%s\n' "$((10#$h * 3600 + 10#$m * 60 + 10#$s))"
+    return 0
+  fi
+
+  echo "Could not parse time: $input" >&2
+  return 2
+}
+
+if [[ $# -lt 1 ]]; then
+  usage
+  exit 2
+fi
+
+action="$1"
+shift || true
+
+case "$action" in
+  toggle|playpause|play-pause)
+    exec osascript -l JavaScript "$CONTROLLER" toggle
+    ;;
+  play)
+    exec osascript -l JavaScript "$CONTROLLER" play
+    ;;
+  pause)
+    exec osascript -l JavaScript "$CONTROLLER" pause
+    ;;
+  back|rewind)
+    seconds="$(to_seconds "${1:-10}")"
+    exec osascript -l JavaScript "$CONTROLLER" back "$seconds"
+    ;;
+  forward|ahead|skip)
+    seconds="$(to_seconds "${1:-10}")"
+    exec osascript -l JavaScript "$CONTROLLER" forward "$seconds"
+    ;;
+  seek|goto|jump)
+    seconds="$(to_seconds "${1:-}")"
+    exec osascript -l JavaScript "$CONTROLLER" seek "$seconds"
+    ;;
+  fullscreen|full-screen)
+    exec osascript -l JavaScript "$CONTROLLER" fullscreen
+    ;;
+  escape|esc)
+    exec osascript -l JavaScript "$CONTROLLER" escape
+    ;;
+  help|-h|--help)
+    usage
+    ;;
+  *)
+    echo "Unknown action: $action" >&2
+    usage >&2
+    exit 2
+    ;;
+esac
