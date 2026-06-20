@@ -10,6 +10,7 @@ done
 
 SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
 CONTROLLER="$SCRIPT_DIR/../lib/safari-media-control.jxa.js"
+LOG_FILE="${ALEXA_SAFARI_REMOTE_LOG:-$HOME/.local/state/alexa-safari-remote/commands.log}"
 
 usage() {
   cat <<'EOF'
@@ -67,6 +68,22 @@ to_seconds() {
   return 2
 }
 
+log_invocation() {
+  local log_dir
+  log_dir="$(dirname "$LOG_FILE")"
+  mkdir -p "$log_dir" 2>/dev/null || return 0
+  {
+    printf '%s action=%q args=' "$(date -u '+%Y-%m-%dT%H:%M:%SZ')" "$action"
+    printf '%q ' "$@"
+    printf '\n'
+  } >>"$LOG_FILE" 2>/dev/null || true
+}
+
+run_controller() {
+  log_invocation "$@"
+  osascript -l JavaScript "$CONTROLLER" "$@"
+}
+
 if [[ $# -lt 1 ]]; then
   usage
   exit 2
@@ -77,34 +94,34 @@ shift || true
 
 case "$action" in
   toggle|playpause|play-pause)
-    exec osascript -l JavaScript "$CONTROLLER" toggle
+    run_controller toggle
     ;;
   play)
-    exec osascript -l JavaScript "$CONTROLLER" play
+    run_controller play
     ;;
   pause)
-    exec osascript -l JavaScript "$CONTROLLER" pause
+    run_controller pause
     ;;
   back|rewind)
     seconds="$(to_seconds "${1:-10}")"
-    exec osascript -l JavaScript "$CONTROLLER" back "$seconds"
+    run_controller back "$seconds"
     ;;
   forward|ahead|skip)
     seconds="$(to_seconds "${1:-10}")"
-    exec osascript -l JavaScript "$CONTROLLER" forward "$seconds"
+    run_controller forward "$seconds"
     ;;
   seek|goto|jump)
     seconds="$(to_seconds "${1:-}")"
-    exec osascript -l JavaScript "$CONTROLLER" seek "$seconds"
+    run_controller seek "$seconds"
     ;;
   fullscreen|full-screen)
-    exec osascript -l JavaScript "$CONTROLLER" fullscreen
+    run_controller fullscreen
     ;;
   escape|esc)
-    exec osascript -l JavaScript "$CONTROLLER" escape
+    run_controller escape
     ;;
   selftest)
-    exec osascript -l JavaScript "$CONTROLLER" __selftest
+    run_controller __selftest
     ;;
   help|-h|--help)
     usage

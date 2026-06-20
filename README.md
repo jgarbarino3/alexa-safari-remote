@@ -128,6 +128,15 @@ Fallback keyboard control returns values like:
 FALLBACK_KEYS:back:1:NO_VIDEO
 ```
 
+Every `safari-remote` invocation appends a local audit line here:
+
+```text
+~/.local/state/alexa-safari-remote/commands.log
+```
+
+That log is intentionally minimal: timestamp, action, and command arguments only.
+It is useful for confirming whether Alexa/TRIGGERcmd reached the Mac.
+
 ## TRIGGERcmd Setup
 
 Install the TRIGGERcmd Mac agent on the Mac that is connected to the TV. TRIGGERcmd provides separate Mac downloads for Apple Silicon and Intel.
