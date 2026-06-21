@@ -110,6 +110,7 @@
             }
           ],
           "samples": [
+            "say {prompt}",
             "ask codex to {prompt}",
             "tell codex to {prompt}",
             "have codex {prompt}",
