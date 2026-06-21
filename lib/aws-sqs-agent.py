@@ -64,6 +64,8 @@ class SqsAgent:
         self.live_codex_delay = float(config.get("LIVE_CODEX_FOCUS_DELAY_SECONDS", "0.8"))
         self.codex_new_chat_on_open = config.get("CODEX_NEW_CHAT_ON_OPEN", "1").strip().lower() not in {"0", "false", "no"}
         self.surfshark_prepare_on_live_prompt = config.get("SURFSHARK_PREPARE_ON_LIVE_PROMPT", "1").strip().lower() not in {"0", "false", "no"}
+        self.surfshark_search_point = parse_point(config.get("SURFSHARK_SEARCH_POINT", "325,130"))
+        self.surfshark_quick_connect_point = parse_point(config.get("SURFSHARK_QUICK_CONNECT_POINT", "1220,1065"))
         self.codex_status_file = self.codex_state_dir / "status.json"
         self.codex_lock_file = self.codex_state_dir / "task.lock"
         self.codex_transcript_log = self.codex_state_dir / "transcripts.log"
@@ -275,11 +277,12 @@ class SqsAgent:
             self.write_codex_status_event("live_prompt_rejected_not_armed", message_id)
             return 3
 
+        surfshark_country = extract_surfshark_country(prompt)
         surfshark_prepared = False
-        if self.surfshark_prepare_on_live_prompt and prompt_requests_surfshark_us(prompt):
-            surfshark_prepared = self.prepare_surfshark_us_fastest(message_id)
+        if self.surfshark_prepare_on_live_prompt and surfshark_country:
+            surfshark_prepared = self.prepare_surfshark_country(message_id, surfshark_country)
 
-        live_prompt = live_codex_prompt_text(prompt, surfshark_prepared=surfshark_prepared)
+        live_prompt = live_codex_prompt_text(prompt, surfshark_country=surfshark_country, surfshark_prepared=surfshark_prepared)
         script = [
             'on run argv',
             'set promptText to item 1 of argv',
@@ -312,21 +315,23 @@ class SqsAgent:
             )
         return completed.returncode
 
-    def prepare_surfshark_us_fastest(self, message_id: str) -> bool:
-        self.log("surfshark_prepare_start", message_id=message_id, target="us_fastest")
+    def prepare_surfshark_country(self, message_id: str, country: str) -> bool:
+        self.log("surfshark_prepare_start", message_id=message_id, country=country)
+        search_x, search_y = self.surfshark_search_point
+        connect_x, connect_y = self.surfshark_quick_connect_point
         script = [
             'tell application "Surfshark" to activate',
             "delay 1.5",
             'tell application "System Events"',
-            'tell process "Surfshark"',
-            "set frontmost to true",
-            'keystroke "f" using command down',
+            f"click at {{{search_x}, {search_y}}}",
             "delay 0.3",
-            'keystroke "United States"',
+            'keystroke "a" using command down',
+            "delay 0.1",
+            f"keystroke {json.dumps(country)}",
             "delay 0.4",
             "key code 36",
-            "delay 0.5",
-            "end tell",
+            "delay 1.0",
+            f"click at {{{connect_x}, {connect_y}}}",
             "end tell",
         ]
         completed = subprocess.run(
@@ -339,7 +344,7 @@ class SqsAgent:
         self.log(
             "surfshark_prepare_done",
             message_id=message_id,
-            target="us_fastest",
+            country=country,
             returncode=str(completed.returncode),
             ok=str(ok),
             stderr=completed.stderr.strip(),
@@ -566,24 +571,75 @@ def parse_worker_summary(stdout: str) -> dict[str, object]:
     return {}
 
 
+COUNTRY_ALIASES = {
+    "usa": "United States",
+    "u.s.": "United States",
+    "us": "United States",
+    "united states": "United States",
+    "america": "United States",
+    "uk": "United Kingdom",
+    "u.k.": "United Kingdom",
+    "england": "United Kingdom",
+}
+
+COUNTRY_NAMES = [
+    "United States",
+    "United Kingdom",
+    "Canada",
+    "Mexico",
+    "France",
+    "Germany",
+    "Italy",
+    "Spain",
+    "Netherlands",
+    "Luxembourg",
+    "Australia",
+    "Japan",
+    "Brazil",
+    "Ireland",
+    "Switzerland",
+    "Sweden",
+    "Norway",
+    "Denmark",
+]
+
+
 def prompt_requests_surfshark_us(prompt: str) -> bool:
+    return extract_surfshark_country(prompt) == "United States"
+
+
+def extract_surfshark_country(prompt: str) -> str:
     text = prompt.lower()
     wants_vpn = any(term in text for term in ["surfshark", "surf shark", "vpn"])
-    wants_us = any(term in text for term in ["usa", "u.s.", "us ", "united states", "america", "peacock"])
-    return wants_vpn and wants_us
+    if not wants_vpn:
+        return ""
+
+    for alias, country in COUNTRY_ALIASES.items():
+        if f" {alias} " in f" {text} " or text.endswith(f" {alias}") or text.startswith(f"{alias} "):
+            return country
+
+    for country in COUNTRY_NAMES:
+        if country.lower() in text:
+            return country
+
+    if "peacock" in text:
+        return "United States"
+
+    return ""
 
 
-def live_codex_prompt_text(prompt: str, surfshark_prepared: bool = False) -> str:
+def live_codex_prompt_text(prompt: str, surfshark_country: str = "", surfshark_prepared: bool = False) -> str:
     surfshark_note = ""
-    if prompt_requests_surfshark_us(prompt):
+    surfshark_country = surfshark_country or extract_surfshark_country(prompt)
+    if surfshark_country:
         if surfshark_prepared:
             surfshark_note = (
-                "\n\nThe Mac helper already opened Surfshark and attempted to select/connect United States/Fastest before sending this prompt. "
+                f"\n\nThe Mac helper already opened Surfshark and attempted to select/connect {surfshark_country} before sending this prompt. "
                 "If Surfshark is still asking for login, confirmation, or a manual click, leave Surfshark visible and say what is needed."
             )
         else:
             surfshark_note = (
-                "\n\nThe user requested Surfshark/USA VPN, but the Mac helper could not confirm it completed. "
+                f"\n\nThe user requested Surfshark/VPN for {surfshark_country}, but the Mac helper could not confirm it completed. "
                 "If Surfshark is visible and needs a manual click/login/confirmation, leave it visible and say what is needed before using Chrome."
             )
     return (
@@ -600,6 +656,13 @@ def strip_quotes(value: str) -> str:
     if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
         return value[1:-1]
     return value
+
+
+def parse_point(value: str) -> tuple[int, int]:
+    x_text, separator, y_text = value.partition(",")
+    if not separator:
+        raise AgentError(f"Invalid point: {value}")
+    return int(x_text.strip()), int(y_text.strip())
 
 
 def shell_word(value: str) -> str:

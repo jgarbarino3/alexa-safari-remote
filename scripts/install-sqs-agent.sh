@@ -42,6 +42,8 @@ ensure_config_value "BROWSER_WORKER_PATH" "$HOME/.local/share/alexa-safari-remot
 ensure_config_value "LIVE_CODEX_FOCUS_DELAY_SECONDS" "0.8"
 ensure_config_value "CODEX_NEW_CHAT_ON_OPEN" "1"
 ensure_config_value "SURFSHARK_PREPARE_ON_LIVE_PROMPT" "1"
+ensure_config_value "SURFSHARK_SEARCH_POINT" "325,130"
+ensure_config_value "SURFSHARK_QUICK_CONNECT_POINT" "1220,1065"
 
 mkdir -p "$HOME/Library/LaunchAgents"
 

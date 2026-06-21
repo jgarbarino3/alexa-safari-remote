@@ -226,12 +226,16 @@ class AgentProcessingTest(unittest.TestCase):
 
     def test_live_codex_prompt_text_mentions_surfshark_prepare(self):
         self.assertTrue(agent.prompt_requests_surfshark_us("open surfshark usa then peacock"))
+        self.assertEqual(agent.extract_surfshark_country("open surfshark canada then netflix"), "Canada")
+        self.assertEqual(agent.extract_surfshark_country("vpn germany then open chrome"), "Germany")
+        self.assertEqual(agent.extract_surfshark_country("use surf shark then peacock"), "United States")
         prompt = agent.live_codex_prompt_text(
             "open surfshark usa then peacock",
+            surfshark_country="United States",
             surfshark_prepared=True,
         )
         self.assertIn("already opened Surfshark", prompt)
-        self.assertIn("United States/Fastest", prompt)
+        self.assertIn("United States", prompt)
 
 
 def wait_for_path(path: Path, timeout: float = 2.0) -> None:

@@ -46,6 +46,7 @@ Codex open Chrome and find the episode I was watching
 Codex use Chrome and go to Peacock
 Codex search Disney for Andor and pick episode 3
 Codex open Surfshark USA fastest then open Peacock and play Poker Face
+Codex connect Surfshark Canada then open Netflix
 ```
 
 Those short in-session phrases are sent through `live_codex_prompt`.
@@ -54,12 +55,13 @@ tasks: leave Google Chrome frontmost, and make the player fullscreen when
 playback is visible. If a login, profile picker, region block, or CAPTCHA stops
 that, Codex should leave the blocker visible in Chrome.
 
-If a live prompt mentions Surfshark/VPN plus USA/United States/Peacock, the Mac
-agent first opens Surfshark and makes a best-effort attempt to search/select
-United States/Fastest using macOS Accessibility. Surfshark has no confirmed CLI
-in this setup, so login prompts, confirmation dialogs, UI changes, or a missing
-Accessibility approval may still require the user. The live Codex prompt will
-be told whether that prep step was attempted before it continues to Chrome.
+If a live prompt mentions Surfshark/VPN plus a country, the Mac agent first
+opens Surfshark and makes a best-effort attempt to search/select that country
+using macOS Accessibility and the configured screen points. Peacock defaults to
+United States. Surfshark has no confirmed CLI in this setup, so login prompts,
+confirmation dialogs, UI changes, or a missing Accessibility approval may still
+require the user. The live Codex prompt will be told whether that prep step was
+attempted before it continues to Chrome.
 
 ## Browser Worker
 
@@ -142,6 +144,8 @@ BROWSER_WORKER_PATH=<installed chrome-worker.py path>
 LIVE_CODEX_FOCUS_DELAY_SECONDS=0.8
 CODEX_NEW_CHAT_ON_OPEN=1
 SURFSHARK_PREPARE_ON_LIVE_PROMPT=1
+SURFSHARK_SEARCH_POINT=325,130
+SURFSHARK_QUICK_CONNECT_POINT=1220,1065
 ```
 
 ## Logs
