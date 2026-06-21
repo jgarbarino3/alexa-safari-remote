@@ -65,7 +65,7 @@ class SqsAgent:
         self.codex_new_chat_on_open = config.get("CODEX_NEW_CHAT_ON_OPEN", "1").strip().lower() not in {"0", "false", "no"}
         self.surfshark_prepare_on_live_prompt = config.get("SURFSHARK_PREPARE_ON_LIVE_PROMPT", "1").strip().lower() not in {"0", "false", "no"}
         self.surfshark_search_point = parse_point(config.get("SURFSHARK_SEARCH_POINT", "325,130"))
-        self.surfshark_quick_connect_point = parse_point(config.get("SURFSHARK_QUICK_CONNECT_POINT", "1220,1065"))
+        self.surfshark_quick_connect_point = parse_point(config.get("SURFSHARK_QUICK_CONNECT_POINT", "723,501"))
         self.click_tool_path = config.get("CLICK_TOOL_PATH") or shutil.which("cliclick") or ""
         self.codex_status_file = self.codex_state_dir / "status.json"
         self.codex_lock_file = self.codex_state_dir / "task.lock"
@@ -340,11 +340,7 @@ class SqsAgent:
 
     def quick_connect_surfshark(self) -> subprocess.CompletedProcess[str]:
         connect_x, connect_y = self.surfshark_quick_connect_point
-        script = [
-            'tell application "Surfshark" to activate',
-            "delay 1.0",
-        ]
-        completed = subprocess.run(["osascript", *sum([["-e", line] for line in script], [])], text=True, capture_output=True, check=False)
+        completed = self.activate_surfshark()
         if completed.returncode != 0:
             return completed
         return subprocess.run(
@@ -357,11 +353,7 @@ class SqsAgent:
     def search_and_connect_surfshark(self, country: str) -> subprocess.CompletedProcess[str]:
         search_x, search_y = self.surfshark_search_point
         connect_x, connect_y = self.surfshark_quick_connect_point
-        script = [
-            'tell application "Surfshark" to activate',
-            "delay 1.0",
-        ]
-        completed = subprocess.run(["osascript", *sum([["-e", line] for line in script], [])], text=True, capture_output=True, check=False)
+        completed = self.activate_surfshark()
         if completed.returncode != 0:
             return completed
         completed = subprocess.run(
@@ -393,6 +385,21 @@ class SqsAgent:
             return completed
         return subprocess.run(
             [self.click_tool_path, f"c:{connect_x},{connect_y}"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    def activate_surfshark(self) -> subprocess.CompletedProcess[str]:
+        completed = subprocess.run(["open", "-a", "Surfshark"], text=True, capture_output=True, check=False)
+        if completed.returncode != 0:
+            return completed
+        script = [
+            'tell application "Surfshark" to activate',
+            "delay 0.5",
+        ]
+        return subprocess.run(
+            ["osascript", *sum([["-e", line] for line in script], [])],
             text=True,
             capture_output=True,
             check=False,
@@ -681,12 +688,14 @@ def live_codex_prompt_text(prompt: str, surfshark_country: str = "", surfshark_p
     if surfshark_country:
         if surfshark_prepared:
             surfshark_note = (
-                f"\n\nThe Mac helper already opened Surfshark and attempted to select/connect {surfshark_country} before sending this prompt. "
+                f"\n\nThe Mac helper already opened Surfshark and attempted to connect {surfshark_country} before sending this prompt. "
                 "If Surfshark is still asking for login, confirmation, or a manual click, leave Surfshark visible and say what is needed."
             )
         else:
             surfshark_note = (
                 f"\n\nThe user requested Surfshark/VPN for {surfshark_country}, but the Mac helper could not confirm it completed. "
+                "The known-good manual fallback is: run `osascript -e 'tell application \"Surfshark\" to activate' -e 'delay 0.5'`, "
+                "then `/usr/local/bin/cliclick c:723,501` to click Quick-connect in macOS point coordinates. "
                 "If Surfshark is visible and needs a manual click/login/confirmation, leave it visible and say what is needed before using Chrome."
             )
     return (

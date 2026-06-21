@@ -236,6 +236,12 @@ class AgentProcessingTest(unittest.TestCase):
         )
         self.assertIn("already opened Surfshark", prompt)
         self.assertIn("United States", prompt)
+        fallback_prompt = agent.live_codex_prompt_text(
+            "open surfshark usa then peacock",
+            surfshark_country="United States",
+            surfshark_prepared=False,
+        )
+        self.assertIn("/usr/local/bin/cliclick c:723,501", fallback_prompt)
 
 
 def wait_for_path(path: Path, timeout: float = 2.0) -> None:

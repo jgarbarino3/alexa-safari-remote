@@ -19,6 +19,15 @@ ensure_config_value() {
   fi
 }
 
+replace_config_value_if_exact() {
+  local key="$1"
+  local old_value="$2"
+  local new_value="$3"
+  if grep -q "^$key=$old_value$" "$CONFIG_FILE"; then
+    sed -i.bak "s/^$key=$old_value$/$key=$new_value/" "$CONFIG_FILE"
+  fi
+}
+
 if [[ ! -f "$CONFIG_FILE" ]]; then
   echo "Missing config file: $CONFIG_FILE" >&2
   echo "Run ./scripts/aws-bridge-deploy.sh first." >&2
@@ -43,7 +52,8 @@ ensure_config_value "LIVE_CODEX_FOCUS_DELAY_SECONDS" "0.8"
 ensure_config_value "CODEX_NEW_CHAT_ON_OPEN" "1"
 ensure_config_value "SURFSHARK_PREPARE_ON_LIVE_PROMPT" "1"
 ensure_config_value "SURFSHARK_SEARCH_POINT" "325,130"
-ensure_config_value "SURFSHARK_QUICK_CONNECT_POINT" "1220,1065"
+ensure_config_value "SURFSHARK_QUICK_CONNECT_POINT" "723,501"
+replace_config_value_if_exact "SURFSHARK_QUICK_CONNECT_POINT" "1220,1065" "723,501"
 if command -v cliclick >/dev/null 2>&1; then
   ensure_config_value "CLICK_TOOL_PATH" "$(command -v cliclick)"
 fi

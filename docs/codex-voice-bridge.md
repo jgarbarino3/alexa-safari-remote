@@ -63,6 +63,20 @@ confirmation dialogs, UI changes, or a missing Accessibility approval may still
 require the user. The live Codex prompt will be told whether that prep step was
 attempted before it continues to Chrome.
 
+For the TV Mac's current Surfshark layout, the reliable Quick-connect sequence
+is:
+
+```sh
+open -a Surfshark
+osascript -e 'tell application "Surfshark" to activate' -e 'delay 0.5'
+/usr/local/bin/cliclick c:723,501
+```
+
+The `723,501` coordinate is a macOS point coordinate, not a Retina screenshot
+pixel coordinate. It clicks the visible Quick-connect button. Surfshark then
+connects to whatever Quick-connect currently chooses internally, so keep United
+States Fastest as the first/preferred Quick-connect target for Peacock.
+
 ## Browser Worker
 
 The Chrome worker is the preferred path for TV/browser actions because it does
@@ -145,7 +159,7 @@ LIVE_CODEX_FOCUS_DELAY_SECONDS=0.8
 CODEX_NEW_CHAT_ON_OPEN=1
 SURFSHARK_PREPARE_ON_LIVE_PROMPT=1
 SURFSHARK_SEARCH_POINT=325,130
-SURFSHARK_QUICK_CONNECT_POINT=1220,1065
+SURFSHARK_QUICK_CONNECT_POINT=723,501
 CLICK_TOOL_PATH=/usr/local/bin/cliclick
 ```
 
