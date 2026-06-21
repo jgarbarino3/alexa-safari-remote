@@ -14,6 +14,7 @@ separate SQS actions:
 - `live_codex_prompt`
 - `codex_status`
 - `codex_cancel`
+- `codex_quit`
 - `browser_open`
 - `browser_search`
 - `browser_command`
@@ -29,6 +30,7 @@ Alexa, ask Codex to search Disney for Andor
 Alexa, ask Codex to live Codex use Chrome and find my episode
 Alexa, ask Codex for status
 Alexa, ask Codex to cancel
+Alexa, ask Codex to close Codex
 ```
 
 The first command opens Codex Desktop and arms prompt intake for 10 minutes. The
@@ -74,6 +76,9 @@ codex app "$CODEX_WORKSPACE_PATH"
 ```
 
 It also arms prompt intake for `CODEX_ARM_SECONDS`, default `600`.
+By default it also sends Command-N to Codex after opening, as a best-effort new
+chat shortcut. Set `CODEX_NEW_CHAT_ON_OPEN=0` in the local config to disable
+that if Codex changes its shortcut behavior.
 
 `codex_task` runs:
 
@@ -101,6 +106,14 @@ frontmost/fullscreen finishing instruction above.
 `codex_cancel` sends SIGTERM to the running Codex task process group when one is
 running.
 
+`codex_quit` cancels any tracked background Codex task and sends Codex.app a
+quit Apple Event. Use it when you want the TV Mac to stop showing Codex after a
+session:
+
+```text
+Alexa, ask Codex to close Codex
+```
+
 ## Config
 
 The installer appends these non-secret keys to:
@@ -119,6 +132,7 @@ CODEX_ARM_SECONDS=600
 CODEX_TASK_TIMEOUT_SECONDS=600
 BROWSER_WORKER_PATH=<installed chrome-worker.py path>
 LIVE_CODEX_FOCUS_DELAY_SECONDS=0.8
+CODEX_NEW_CHAT_ON_OPEN=1
 ```
 
 ## Logs

@@ -12,6 +12,7 @@ const ACTION_BY_INTENT = {
   OpenCodexIntent: { action: 'open_codex' },
   CodexStatusIntent: { action: 'codex_status' },
   CancelCodexIntent: { action: 'codex_cancel' },
+  QuitCodexIntent: { action: 'codex_quit' },
   BrowserStatusIntent: { action: 'browser_status' },
 };
 
@@ -158,6 +159,10 @@ function actionFromCodexPrompt(prompt) {
     }
   }
 
+  if (['quit codex', 'close codex', 'shut down codex'].includes(cleanPrompt)) {
+    return { action: 'codex_quit' };
+  }
+
   const searchMatch = cleanPrompt.match(/^(?:search|find) (peacock|peacock tv|disney|disney plus|netflix|youtube|you tube|hulu|prime|prime video) (?:for )?(.+)$/);
   if (searchMatch) {
     return { action: 'browser_search', site: searchMatch[1], query: searchMatch[2] };
@@ -262,6 +267,7 @@ function spokenConfirmation(mediaAction) {
   if (mediaAction.action === 'live_codex_prompt') return 'Sent to live Codex.';
   if (mediaAction.action === 'codex_status') return 'Checking Codex status.';
   if (mediaAction.action === 'codex_cancel') return 'Cancelling Codex.';
+  if (mediaAction.action === 'codex_quit') return 'Closing Codex.';
   if (mediaAction.action === 'browser_open') return `Opening ${mediaAction.site}.`;
   if (mediaAction.action === 'browser_search') return `Searching ${mediaAction.site}.`;
   if (mediaAction.action === 'browser_command') return `${mediaAction.command}.`;

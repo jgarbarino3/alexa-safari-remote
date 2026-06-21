@@ -304,6 +304,14 @@
           ]
         },
         {
+          "name": "QuitCodexIntent",
+          "samples": [
+            "quit codex",
+            "close codex",
+            "shut down codex"
+          ]
+        },
+        {
           "name": "AMAZON.HelpIntent",
           "samples": []
         },

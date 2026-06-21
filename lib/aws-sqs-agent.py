@@ -21,7 +21,7 @@ DEFAULT_LOG = Path.home() / ".local" / "state" / "alexa-safari-remote" / "aws-sq
 DEFAULT_SAFARI_REMOTE = Path.home() / ".local" / "bin" / "safari-remote"
 DEFAULT_CODEX_STATE_DIR = Path.home() / ".local" / "state" / "alexa-safari-remote" / "codex"
 DEFAULT_BROWSER_WORKER = Path.home() / ".local" / "share" / "alexa-safari-remote" / "lib" / "chrome-worker.py"
-CODEX_ACTIONS = {"open_codex", "codex_task", "codex_status", "codex_cancel", "live_codex_prompt"}
+CODEX_ACTIONS = {"open_codex", "codex_task", "codex_status", "codex_cancel", "codex_quit", "live_codex_prompt"}
 BROWSER_ACTIONS = {"browser_open", "browser_search", "browser_command", "browser_seek", "browser_status"}
 
 
@@ -62,6 +62,7 @@ class SqsAgent:
         self.codex_state_dir = Path(config.get("CODEX_STATE_DIR", str(DEFAULT_CODEX_STATE_DIR))).expanduser()
         self.browser_worker = Path(config.get("BROWSER_WORKER_PATH", str(DEFAULT_BROWSER_WORKER))).expanduser()
         self.live_codex_delay = float(config.get("LIVE_CODEX_FOCUS_DELAY_SECONDS", "0.8"))
+        self.codex_new_chat_on_open = config.get("CODEX_NEW_CHAT_ON_OPEN", "1").strip().lower() not in {"0", "false", "no"}
         self.codex_status_file = self.codex_state_dir / "status.json"
         self.codex_lock_file = self.codex_state_dir / "task.lock"
         self.codex_transcript_log = self.codex_state_dir / "transcripts.log"
@@ -145,6 +146,8 @@ class SqsAgent:
             return self.write_codex_status_event("status_requested", message_id)
         if action == "codex_cancel":
             return self.cancel_codex_task(message_id)
+        if action == "codex_quit":
+            return self.quit_codex(message_id)
 
         self.log("codex_action_error", message_id=message_id, action=action, error="unsupported_codex_action")
         return 2
@@ -182,6 +185,7 @@ class SqsAgent:
             return 2
 
         subprocess.Popen([self.codex_path, "app", str(self.codex_workspace)], start_new_session=True)
+        new_chat_ok = self.open_codex_new_chat() if self.codex_new_chat_on_open else False
         armed_until = int(time.time()) + self.codex_arm_seconds
         self.update_codex_status({
             "state": "armed",
@@ -191,8 +195,30 @@ class SqsAgent:
             "task_started_at": None,
             "last_prompt": "",
         })
-        self.log("codex_opened", message_id=message_id, armed_until=str(armed_until), workspace=str(self.codex_workspace))
+        self.log(
+            "codex_opened",
+            message_id=message_id,
+            armed_until=str(armed_until),
+            workspace=str(self.codex_workspace),
+            new_chat=str(new_chat_ok),
+        )
         return 0
+
+    def open_codex_new_chat(self) -> bool:
+        script = [
+            'tell application "Codex" to activate',
+            "delay 1.0",
+            'tell application "System Events"',
+            'keystroke "n" using command down',
+            "end tell",
+        ]
+        completed = subprocess.run(
+            ["osascript", *sum([["-e", line] for line in script], [])],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        return completed.returncode == 0
 
     def start_codex_task(self, prompt: str, message_id: str) -> int:
         if not prompt:
@@ -298,6 +324,23 @@ class SqsAgent:
         self.clear_codex_lock()
         self.log("codex_cancel_no_task", message_id=message_id)
         return 0
+
+    def quit_codex(self, message_id: str) -> int:
+        self.cancel_codex_task(message_id)
+        completed = subprocess.run(
+            ["osascript", "-e", 'tell application "Codex" to quit'],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.update_codex_status({"state": "closed", "task_pid": None})
+        self.log(
+            "codex_quit",
+            message_id=message_id,
+            returncode=str(completed.returncode),
+            stderr=completed.stderr.strip(),
+        )
+        return completed.returncode
 
     def reap_codex_task(self) -> None:
         status = self.read_codex_status()

@@ -163,6 +163,21 @@ async function invokeWithSession(intent, attributes) {
     assert.deepStrictEqual(calls[0], { action: 'codex_cancel' });
     assert.strictEqual(result.response.outputSpeech.text, 'Cancelling Codex.');
   }
+
+  {
+    const { result, calls } = await invoke({ name: 'QuitCodexIntent', slots: {} });
+    assert.deepStrictEqual(calls[0], { action: 'codex_quit' });
+    assert.strictEqual(result.response.outputSpeech.text, 'Closing Codex.');
+  }
+
+  {
+    const { result, calls } = await invoke({
+      name: 'AskCodexIntent',
+      slots: { prompt: { value: 'close codex' } },
+    });
+    assert.deepStrictEqual(calls[0], { action: 'codex_quit' });
+    assert.strictEqual(result.response.outputSpeech.text, 'Closing Codex.');
+  }
 })().catch((error) => {
   console.error(error);
   process.exit(1);

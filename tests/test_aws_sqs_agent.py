@@ -103,6 +103,7 @@ class AgentProcessingTest(unittest.TestCase):
                     "CODEX_WORKSPACE_PATH": str(root),
                     "CODEX_STATE_DIR": str(root / "state"),
                     "AGENT_LOG_FILE": str(root / "agent.log"),
+                    "CODEX_NEW_CHAT_ON_OPEN": "0",
                 }
             )
 
@@ -112,6 +113,28 @@ class AgentProcessingTest(unittest.TestCase):
             self.assertGreater(status["armed_until"], int(time.time()))
             wait_for_path(calls)
             self.assertIn(f"app {root}", calls.read_text(encoding="utf-8"))
+
+    def test_codex_quit_updates_closed_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            sqs_agent = agent.SqsAgent(
+                {
+                    "QUEUE_URL": "https://example.invalid/queue",
+                    "CODEX_WORKSPACE_PATH": str(root),
+                    "CODEX_STATE_DIR": str(root / "state"),
+                    "AGENT_LOG_FILE": str(root / "agent.log"),
+                }
+            )
+
+            self.assertIn(
+                sqs_agent.handle_codex_action({"action": "codex_quit"}, "message-quit"),
+                {0, 1},
+            )
+            status = json.loads((root / "state" / "status.json").read_text(encoding="utf-8"))
+            self.assertEqual(status["state"], "closed")
+            log_text = (root / "agent.log").read_text(encoding="utf-8")
+            self.assertIn("event=codex_quit", log_text)
 
     def test_codex_task_uses_workspace_prompt_lock_and_cancel(self):
         with tempfile.TemporaryDirectory() as tmp:
