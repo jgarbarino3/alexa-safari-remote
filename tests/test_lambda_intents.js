@@ -27,6 +27,24 @@ async function invoke(intent) {
 
 (async () => {
   {
+    const calls = [];
+    const originalFetch = global.fetch;
+    global.fetch = async (_url, options) => {
+      calls.push(JSON.parse(options.body));
+      return { ok: true };
+    };
+    process.env.REMOTE_ENDPOINT_URL = 'https://bridge.example.test';
+    try {
+      const result = await skill.handler({ request: { type: 'LaunchRequest' } });
+      assert.deepStrictEqual(calls[0], { action: 'open_codex' });
+      assert.strictEqual(result.response.outputSpeech.text, 'Opening Codex. Prompt intake is armed for ten minutes.');
+    } finally {
+      global.fetch = originalFetch;
+      delete process.env.REMOTE_ENDPOINT_URL;
+    }
+  }
+
+  {
     const { result, calls } = await invoke({ name: 'OpenCodexIntent', slots: {} });
     assert.deepStrictEqual(calls[0], { action: 'open_codex' });
     assert.strictEqual(result.response.outputSpeech.text, 'Opening Codex.');

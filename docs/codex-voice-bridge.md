@@ -5,6 +5,8 @@ Use this on the TV Mac after the Safari remote and Alexa relay path are working.
 ## Voice Flow
 
 ```text
+Alexa, open Codex
+Alexa, ask Codex to open Chrome and go to Peacock
 Alexa, ask TV remote to open Codex
 Alexa, ask TV remote to ask Codex to open Chrome and go to Peacock
 Alexa, ask TV remote to Codex status

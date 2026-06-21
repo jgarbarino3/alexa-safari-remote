@@ -1,7 +1,7 @@
 {
   "interactionModel": {
     "languageModel": {
-      "invocationName": "tv remote",
+      "invocationName": "codex",
       "intents": [
         {
           "name": "PlayIntent",

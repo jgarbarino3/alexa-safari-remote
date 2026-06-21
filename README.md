@@ -210,7 +210,7 @@ alexa-skill/
 
 It includes:
 
-- an Alexa interaction model using invocation name `tv remote`
+- an Alexa interaction model using invocation name `codex`
 - a Lambda handler that parses play/pause/seek commands and Codex task commands
 - a bridge contract: `POST { "action": "seek", "seconds": 754 }`
 
@@ -221,6 +221,13 @@ Important: Alexa custom skill code runs in the cloud. It cannot directly execute
 3. a secure tunnel or VPN endpoint
 
 The custom skill is worth building after local Safari control is proven on the actual streaming sites.
+
+The Codex voice shortcut path uses:
+
+```text
+Alexa, open Codex
+Alexa, ask Codex to open Chrome and go to Peacock
+```
 
 ## Codex Voice Bridge
 
