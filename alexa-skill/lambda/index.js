@@ -26,11 +26,19 @@ const SITE_BY_SEARCH_INTENT = {
 
 exports.handler = async (event) => {
   const request = event && event.request ? event.request : {};
+  const sessionAttributes = event && event.session && event.session.attributes ? event.session.attributes : {};
 
   if (request.type === 'LaunchRequest') {
     const mediaAction = { action: 'open_codex' };
     await sendToBridge(mediaAction);
-    return response('Opening Codex. Prompt intake is armed for ten minutes.');
+    return response(
+      'Opening Codex. Say Codex followed by what you want me to do.',
+      {
+        shouldEndSession: false,
+        reprompt: 'Say Codex followed by what you want me to do.',
+        sessionAttributes: { liveCodexMode: true },
+      },
+    );
   }
 
   if (request.type !== 'IntentRequest') {
@@ -47,16 +55,16 @@ exports.handler = async (event) => {
     return response('Done.');
   }
 
-  const mediaAction = buildMediaAction(request.intent);
+  const mediaAction = buildMediaAction(request.intent, sessionAttributes);
   if (!mediaAction) {
     return response('I did not understand that remote command.');
   }
 
   await sendToBridge(mediaAction);
-  return response(spokenConfirmation(mediaAction));
+  return response(spokenConfirmation(mediaAction), responseOptionsForAction(mediaAction, sessionAttributes));
 };
 
-function buildMediaAction(intent) {
+function buildMediaAction(intent, sessionAttributes = {}) {
   const intentName = intent && intent.name;
 
   if (ACTION_BY_INTENT[intentName]) {
@@ -66,6 +74,9 @@ function buildMediaAction(intent) {
   if (intentName === 'AskCodexIntent') {
     const prompt = slotValue(intent, 'prompt');
     if (!prompt) return null;
+    if (sessionAttributes.liveCodexMode) {
+      return { action: 'live_codex_prompt', prompt: stripCodexPrefix(prompt) };
+    }
     return actionFromCodexPrompt(prompt);
   }
 
@@ -131,6 +142,11 @@ function buildMediaAction(intent) {
   }
 
   return null;
+}
+
+function stripCodexPrefix(prompt) {
+  const cleanPrompt = String(prompt || '').trim().toLowerCase();
+  return cleanPrompt.startsWith('codex ') ? cleanPrompt.slice(6).trim() : cleanPrompt;
 }
 
 function actionFromCodexPrompt(prompt) {
@@ -264,16 +280,40 @@ function formatTime(totalSeconds) {
   return `${seconds} seconds`;
 }
 
-function response(outputSpeech) {
-  return {
+function responseOptionsForAction(mediaAction, sessionAttributes = {}) {
+  if (mediaAction.action === 'open_codex') {
+    return {
+      shouldEndSession: false,
+      reprompt: 'Say Codex followed by what you want me to do.',
+      sessionAttributes: { ...sessionAttributes, liveCodexMode: true },
+    };
+  }
+  return {};
+}
+
+function response(outputSpeech, options = {}) {
+  const shouldEndSession = options.shouldEndSession !== undefined ? options.shouldEndSession : true;
+  const result = {
     version: '1.0',
+    sessionAttributes: options.sessionAttributes || {},
     response: {
       outputSpeech: {
         type: 'PlainText',
         text: outputSpeech,
       },
-      shouldEndSession: true,
+      shouldEndSession,
     },
+  };
+  if (options.reprompt) {
+    result.response.reprompt = {
+      outputSpeech: {
+        type: 'PlainText',
+        text: options.reprompt,
+      },
+    };
+  }
+  return {
+    ...result,
   };
 }
 

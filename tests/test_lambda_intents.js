@@ -25,6 +25,29 @@ async function invoke(intent) {
   }
 }
 
+async function invokeWithSession(intent, attributes) {
+  const calls = [];
+  const originalFetch = global.fetch;
+  global.fetch = async (_url, options) => {
+    calls.push(JSON.parse(options.body));
+    return { ok: true };
+  };
+  process.env.REMOTE_ENDPOINT_URL = 'https://bridge.example.test';
+  try {
+    const result = await skill.handler({
+      session: { attributes },
+      request: {
+        type: 'IntentRequest',
+        intent,
+      },
+    });
+    return { result, calls };
+  } finally {
+    global.fetch = originalFetch;
+    delete process.env.REMOTE_ENDPOINT_URL;
+  }
+}
+
 (async () => {
   {
     const calls = [];
@@ -37,7 +60,9 @@ async function invoke(intent) {
     try {
       const result = await skill.handler({ request: { type: 'LaunchRequest' } });
       assert.deepStrictEqual(calls[0], { action: 'open_codex' });
-      assert.strictEqual(result.response.outputSpeech.text, 'Opening Codex. Prompt intake is armed for ten minutes.');
+      assert.strictEqual(result.response.outputSpeech.text, 'Opening Codex. Say Codex followed by what you want me to do.');
+      assert.strictEqual(result.response.shouldEndSession, false);
+      assert.strictEqual(result.sessionAttributes.liveCodexMode, true);
     } finally {
       global.fetch = originalFetch;
       delete process.env.REMOTE_ENDPOINT_URL;
@@ -48,6 +73,8 @@ async function invoke(intent) {
     const { result, calls } = await invoke({ name: 'OpenCodexIntent', slots: {} });
     assert.deepStrictEqual(calls[0], { action: 'open_codex' });
     assert.strictEqual(result.response.outputSpeech.text, 'Opening Codex. Prompt intake is armed for ten minutes.');
+    assert.strictEqual(result.response.shouldEndSession, false);
+    assert.strictEqual(result.sessionAttributes.liveCodexMode, true);
   }
 
   {
@@ -97,6 +124,18 @@ async function invoke(intent) {
     assert.deepStrictEqual(calls[0], {
       action: 'live_codex_prompt',
       prompt: 'use chrome and find my episode',
+    });
+    assert.strictEqual(result.response.outputSpeech.text, 'Sent to live Codex.');
+  }
+
+  {
+    const { result, calls } = await invokeWithSession({
+      name: 'AskCodexIntent',
+      slots: { prompt: { value: 'codex open chrome and find the episode I was watching' } },
+    }, { liveCodexMode: true });
+    assert.deepStrictEqual(calls[0], {
+      action: 'live_codex_prompt',
+      prompt: 'open chrome and find the episode i was watching',
     });
     assert.strictEqual(result.response.outputSpeech.text, 'Sent to live Codex.');
   }

@@ -36,6 +36,17 @@ browser commands use the local Chrome worker when they match deterministic
 open/search/play/seek/fullscreen patterns. Explicit live Codex phrases paste the
 prompt into the open Codex app. Other prompts can still use `codex exec`.
 
+After `Alexa, open Codex` or `Alexa, launch Codex`, the skill keeps the Alexa
+session open briefly. During that open session, say:
+
+```text
+Codex open Chrome and find the episode I was watching
+Codex use Chrome and go to Peacock
+Codex search Disney for Andor and pick episode 3
+```
+
+Those short in-session phrases are sent through `live_codex_prompt`.
+
 ## Browser Worker
 
 The Chrome worker is the preferred path for TV/browser actions because it does
