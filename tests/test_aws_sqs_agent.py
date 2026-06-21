@@ -195,6 +195,12 @@ class AgentProcessingTest(unittest.TestCase):
             self.assertIn("event=live_codex_rejected", log_text)
             self.assertIn("reason=not_armed", log_text)
 
+    def test_live_codex_prompt_text_requests_chrome_fullscreen_finish(self):
+        prompt = agent.live_codex_prompt_text("open peacock and play the last episode")
+        self.assertIn("User voice prompt: open peacock and play the last episode", prompt)
+        self.assertIn("leaving Google Chrome frontmost", prompt)
+        self.assertIn("make the player fullscreen", prompt)
+
 
 def wait_for_path(path: Path, timeout: float = 2.0) -> None:
     deadline = time.time() + timeout

@@ -46,6 +46,10 @@ Codex search Disney for Andor and pick episode 3
 ```
 
 Those short in-session phrases are sent through `live_codex_prompt`.
+The Mac agent automatically adds a finishing instruction for live Chrome/video
+tasks: leave Google Chrome frontmost, and make the player fullscreen when
+playback is visible. If a login, profile picker, region block, or CAPTCHA stops
+that, Codex should leave the blocker visible in Chrome.
 
 ## Browser Worker
 
@@ -89,6 +93,8 @@ focus Codex.app -> paste prompt -> press Return
 This is the path for more complicated interactive prompts where the live Codex
 app can use Chrome tools directly. It requires macOS Accessibility/Automation
 approval for the LaunchAgent process and/or terminal wrapper that triggers it.
+The injected prompt includes the user's spoken request plus the Chrome
+frontmost/fullscreen finishing instruction above.
 
 `codex_status` writes status to the agent log.
 

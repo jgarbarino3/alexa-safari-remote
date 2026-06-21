@@ -248,6 +248,7 @@ class SqsAgent:
             self.write_codex_status_event("live_prompt_rejected_not_armed", message_id)
             return 3
 
+        live_prompt = live_codex_prompt_text(prompt)
         script = [
             'on run argv',
             'set promptText to item 1 of argv',
@@ -262,7 +263,7 @@ class SqsAgent:
             "end run",
         ]
         completed = subprocess.run(
-            ["osascript", *sum([["-e", line] for line in script], []), prompt],
+            ["osascript", *sum([["-e", line] for line in script], []), live_prompt],
             text=True,
             capture_output=True,
             check=False,
@@ -481,6 +482,16 @@ def parse_worker_summary(stdout: str) -> dict[str, object]:
         if isinstance(parsed, dict):
             return parsed
     return {}
+
+
+def live_codex_prompt_text(prompt: str) -> str:
+    return (
+        "User voice prompt: "
+        + prompt
+        + "\n\nWhen this is a Chrome, streaming, or video playback task, finish by leaving Google Chrome frontmost. "
+        "If playback has started or a video player is visible, make the player fullscreen before ending. "
+        "If fullscreen is blocked by a login, profile picker, region block, CAPTCHA, or other user-only prompt, leave that page visible in Chrome and say what is needed."
+    )
 
 
 def strip_quotes(value: str) -> str:
