@@ -146,7 +146,13 @@ CODEX_NEW_CHAT_ON_OPEN=1
 SURFSHARK_PREPARE_ON_LIVE_PROMPT=1
 SURFSHARK_SEARCH_POINT=325,130
 SURFSHARK_QUICK_CONNECT_POINT=1220,1065
+CLICK_TOOL_PATH=/usr/local/bin/cliclick
 ```
+
+For Peacock/United States prompts, set Surfshark's Quick-connect target to
+United States Fastest. The bridge can then use the single Quick-connect button
+instead of searching the country list. Other country prompts still use the
+search field and then click Quick-connect.
 
 ## Logs
 

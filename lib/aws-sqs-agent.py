@@ -66,6 +66,7 @@ class SqsAgent:
         self.surfshark_prepare_on_live_prompt = config.get("SURFSHARK_PREPARE_ON_LIVE_PROMPT", "1").strip().lower() not in {"0", "false", "no"}
         self.surfshark_search_point = parse_point(config.get("SURFSHARK_SEARCH_POINT", "325,130"))
         self.surfshark_quick_connect_point = parse_point(config.get("SURFSHARK_QUICK_CONNECT_POINT", "1220,1065"))
+        self.click_tool_path = config.get("CLICK_TOOL_PATH") or shutil.which("cliclick") or ""
         self.codex_status_file = self.codex_state_dir / "status.json"
         self.codex_lock_file = self.codex_state_dir / "task.lock"
         self.codex_transcript_log = self.codex_state_dir / "transcripts.log"
@@ -317,29 +318,15 @@ class SqsAgent:
 
     def prepare_surfshark_country(self, message_id: str, country: str) -> bool:
         self.log("surfshark_prepare_start", message_id=message_id, country=country)
-        search_x, search_y = self.surfshark_search_point
-        connect_x, connect_y = self.surfshark_quick_connect_point
-        script = [
-            'tell application "Surfshark" to activate',
-            "delay 1.5",
-            'tell application "System Events"',
-            f"click at {{{search_x}, {search_y}}}",
-            "delay 0.3",
-            'keystroke "a" using command down',
-            "delay 0.1",
-            f"keystroke {json.dumps(country)}",
-            "delay 0.4",
-            "key code 36",
-            "delay 1.0",
-            f"click at {{{connect_x}, {connect_y}}}",
-            "end tell",
-        ]
-        completed = subprocess.run(
-            ["osascript", *sum([["-e", line] for line in script], [])],
-            text=True,
-            capture_output=True,
-            check=False,
-        )
+        if not self.click_tool_path:
+            self.log("surfshark_prepare_done", message_id=message_id, country=country, returncode="2", ok="False", stderr="missing_click_tool")
+            return False
+
+        if country == "United States":
+            completed = self.quick_connect_surfshark()
+        else:
+            completed = self.search_and_connect_surfshark(country)
+
         ok = completed.returncode == 0
         self.log(
             "surfshark_prepare_done",
@@ -350,6 +337,66 @@ class SqsAgent:
             stderr=completed.stderr.strip(),
         )
         return ok
+
+    def quick_connect_surfshark(self) -> subprocess.CompletedProcess[str]:
+        connect_x, connect_y = self.surfshark_quick_connect_point
+        script = [
+            'tell application "Surfshark" to activate',
+            "delay 1.0",
+        ]
+        completed = subprocess.run(["osascript", *sum([["-e", line] for line in script], [])], text=True, capture_output=True, check=False)
+        if completed.returncode != 0:
+            return completed
+        return subprocess.run(
+            [self.click_tool_path, f"c:{connect_x},{connect_y}"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+
+    def search_and_connect_surfshark(self, country: str) -> subprocess.CompletedProcess[str]:
+        search_x, search_y = self.surfshark_search_point
+        connect_x, connect_y = self.surfshark_quick_connect_point
+        script = [
+            'tell application "Surfshark" to activate',
+            "delay 1.0",
+        ]
+        completed = subprocess.run(["osascript", *sum([["-e", line] for line in script], [])], text=True, capture_output=True, check=False)
+        if completed.returncode != 0:
+            return completed
+        completed = subprocess.run(
+            [self.click_tool_path, f"c:{search_x},{search_y}"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if completed.returncode != 0:
+            return completed
+        script = [
+            "delay 0.3",
+            'tell application "System Events"',
+            'keystroke "a" using command down',
+            "delay 0.1",
+            f"keystroke {json.dumps(country)}",
+            "delay 0.4",
+            "key code 36",
+            "delay 1.0",
+            "end tell",
+        ]
+        completed = subprocess.run(
+            ["osascript", *sum([["-e", line] for line in script], [])],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if completed.returncode != 0:
+            return completed
+        return subprocess.run(
+            [self.click_tool_path, f"c:{connect_x},{connect_y}"],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
 
     def cancel_codex_task(self, message_id: str) -> int:
         status = self.read_codex_status()

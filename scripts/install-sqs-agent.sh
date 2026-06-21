@@ -44,6 +44,9 @@ ensure_config_value "CODEX_NEW_CHAT_ON_OPEN" "1"
 ensure_config_value "SURFSHARK_PREPARE_ON_LIVE_PROMPT" "1"
 ensure_config_value "SURFSHARK_SEARCH_POINT" "325,130"
 ensure_config_value "SURFSHARK_QUICK_CONNECT_POINT" "1220,1065"
+if command -v cliclick >/dev/null 2>&1; then
+  ensure_config_value "CLICK_TOOL_PATH" "$(command -v cliclick)"
+fi
 
 mkdir -p "$HOME/Library/LaunchAgents"
 
