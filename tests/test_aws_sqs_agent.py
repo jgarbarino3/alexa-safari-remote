@@ -198,6 +198,35 @@ class AgentProcessingTest(unittest.TestCase):
             self.assertIn("event=browser_action_done", log_text)
             self.assertIn("worker_event=browser_opened", log_text)
 
+    def test_surfshark_action_uses_quick_connect_button(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            class FakeAgent(agent.SqsAgent):
+                def __init__(self):
+                    super().__init__(
+                        {
+                            "QUEUE_URL": "https://example.invalid/queue",
+                            "CODEX_WORKSPACE_PATH": str(root),
+                            "CODEX_STATE_DIR": str(root / "state"),
+                            "AGENT_LOG_FILE": str(root / "agent.log"),
+                            "CLICK_TOOL_PATH": "/tmp/cliclick",
+                        }
+                    )
+                    self.clicked = False
+
+                def quick_connect_surfshark(self):
+                    self.clicked = True
+                    return agent.subprocess.CompletedProcess(["cliclick"], 0, "", "")
+
+            sqs_agent = FakeAgent()
+            self.assertEqual(sqs_agent.handle_surfshark_action({"action": "surfshark_disconnect"}, "message-vpn"), 0)
+            self.assertTrue(sqs_agent.clicked)
+            log_text = (root / "agent.log").read_text(encoding="utf-8")
+            self.assertIn("event=surfshark_action_done", log_text)
+            self.assertIn("action=surfshark_disconnect", log_text)
+            self.assertIn("ok=True", log_text)
+
     def test_live_codex_prompt_requires_armed_state(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -223,6 +252,8 @@ class AgentProcessingTest(unittest.TestCase):
         self.assertIn("User voice prompt: open peacock and play the last episode", prompt)
         self.assertIn("leaving Google Chrome frontmost", prompt)
         self.assertIn("make the player fullscreen", prompt)
+        self.assertIn("Do not open browser history", prompt)
+        self.assertIn("final visual/state check", prompt)
 
     def test_live_codex_prompt_text_mentions_surfshark_prepare(self):
         self.assertTrue(agent.prompt_requests_surfshark_us("open surfshark usa then peacock"))

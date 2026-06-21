@@ -286,6 +286,31 @@
           ]
         },
         {
+          "name": "SurfsharkDisconnectIntent",
+          "samples": [
+            "disconnect VPN",
+            "disconnect the VPN",
+            "turn off VPN",
+            "turn off Surfshark",
+            "disconnect Surfshark",
+            "stop Surfshark"
+          ]
+        },
+        {
+          "name": "SurfsharkConnectIntent",
+          "samples": [
+            "connect VPN",
+            "connect Surfshark",
+            "start Surfshark",
+            "turn on VPN",
+            "turn on Surfshark",
+            "refresh VPN",
+            "restart VPN",
+            "refresh United States VPN",
+            "restart United States VPN"
+          ]
+        },
+        {
           "name": "CodexStatusIntent",
           "samples": [
             "codex status",

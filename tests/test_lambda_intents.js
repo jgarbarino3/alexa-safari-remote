@@ -178,6 +178,36 @@ async function invokeWithSession(intent, attributes) {
     assert.deepStrictEqual(calls[0], { action: 'codex_quit' });
     assert.strictEqual(result.response.outputSpeech.text, 'Closing Codex.');
   }
+
+  {
+    const { result, calls } = await invoke({ name: 'SurfsharkDisconnectIntent', slots: {} });
+    assert.deepStrictEqual(calls[0], { action: 'surfshark_disconnect' });
+    assert.strictEqual(result.response.outputSpeech.text, 'Disconnecting Surfshark.');
+  }
+
+  {
+    const { result, calls } = await invoke({ name: 'SurfsharkConnectIntent', slots: {} });
+    assert.deepStrictEqual(calls[0], { action: 'surfshark_connect_us' });
+    assert.strictEqual(result.response.outputSpeech.text, 'Connecting Surfshark.');
+  }
+
+  {
+    const { result, calls } = await invoke({
+      name: 'AskCodexIntent',
+      slots: { prompt: { value: 'disconnect VPN' } },
+    });
+    assert.deepStrictEqual(calls[0], { action: 'surfshark_disconnect' });
+    assert.strictEqual(result.response.outputSpeech.text, 'Disconnecting Surfshark.');
+  }
+
+  {
+    const { result, calls } = await invoke({
+      name: 'AskCodexIntent',
+      slots: { prompt: { value: 'refresh VPN' } },
+    });
+    assert.deepStrictEqual(calls[0], { action: 'surfshark_connect_us' });
+    assert.strictEqual(result.response.outputSpeech.text, 'Connecting Surfshark.');
+  }
 })().catch((error) => {
   console.error(error);
   process.exit(1);

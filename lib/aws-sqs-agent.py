@@ -23,6 +23,7 @@ DEFAULT_CODEX_STATE_DIR = Path.home() / ".local" / "state" / "alexa-safari-remot
 DEFAULT_BROWSER_WORKER = Path.home() / ".local" / "share" / "alexa-safari-remote" / "lib" / "chrome-worker.py"
 CODEX_ACTIONS = {"open_codex", "codex_task", "codex_status", "codex_cancel", "codex_quit", "live_codex_prompt"}
 BROWSER_ACTIONS = {"browser_open", "browser_search", "browser_command", "browser_seek", "browser_status"}
+SURFSHARK_ACTIONS = {"surfshark_disconnect", "surfshark_connect_us"}
 
 
 class AgentError(Exception):
@@ -106,6 +107,8 @@ class SqsAgent:
                 returncode = self.handle_codex_action(media_action, message_id)
             elif action_name in BROWSER_ACTIONS:
                 returncode = self.handle_browser_action(media_action, message_id)
+            elif action_name in SURFSHARK_ACTIONS:
+                returncode = self.handle_surfshark_action(media_action, message_id)
             else:
                 argv = command_for_message(media_action, self.safari_remote)
                 returncode = self.run_safari_command(argv, message_id)
@@ -155,6 +158,30 @@ class SqsAgent:
 
         self.log("codex_action_error", message_id=message_id, action=action, error="unsupported_codex_action")
         return 2
+
+    def handle_surfshark_action(self, message: dict[str, object], message_id: str) -> int:
+        action = normalized_action(message)
+        self.log("surfshark_action_start", message_id=message_id, action=action)
+        if not self.click_tool_path:
+            self.log("surfshark_action_done", message_id=message_id, action=action, returncode="2", ok="False", stderr="missing_click_tool")
+            return 2
+
+        if action in {"surfshark_disconnect", "surfshark_connect_us"}:
+            completed = self.quick_connect_surfshark()
+        else:
+            self.log("surfshark_action_done", message_id=message_id, action=action, returncode="2", ok="False", stderr="unsupported_surfshark_action")
+            return 2
+
+        ok = completed.returncode == 0
+        self.log(
+            "surfshark_action_done",
+            message_id=message_id,
+            action=action,
+            returncode=str(completed.returncode),
+            ok=str(ok),
+            stderr=completed.stderr.strip(),
+        )
+        return completed.returncode
 
     def handle_browser_action(self, message: dict[str, object], message_id: str) -> int:
         self.log("browser_action_start", message_id=message_id, action=normalized_action(message))
@@ -703,7 +730,9 @@ def live_codex_prompt_text(prompt: str, surfshark_country: str = "", surfshark_p
         + prompt
         + surfshark_note
         + "\n\nWhen this is a Chrome, streaming, or video playback task, finish by leaving Google Chrome frontmost. "
+        "Do not open browser history or other protected local browser data to infer what was recently watched; use the streaming site's visible Continue Watching, search, episode pages, or ask the user if the exact episode cannot be determined without an approval prompt. "
         "If playback has started or a video player is visible, make the player fullscreen before ending. "
+        "Before ending, do one final visual/state check that Chrome is frontmost, the intended video page is visible, and the player is actually fullscreen; if the fullscreen click missed, retry once and check again. "
         "If fullscreen is blocked by a login, profile picker, region block, CAPTCHA, or other user-only prompt, leave that page visible in Chrome and say what is needed."
     )
 

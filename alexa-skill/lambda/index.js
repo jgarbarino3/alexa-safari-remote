@@ -14,6 +14,8 @@ const ACTION_BY_INTENT = {
   CancelCodexIntent: { action: 'codex_cancel' },
   QuitCodexIntent: { action: 'codex_quit' },
   BrowserStatusIntent: { action: 'browser_status' },
+  SurfsharkDisconnectIntent: { action: 'surfshark_disconnect' },
+  SurfsharkConnectIntent: { action: 'surfshark_connect_us' },
 };
 
 const SITE_BY_SEARCH_INTENT = {
@@ -163,6 +165,14 @@ function actionFromCodexPrompt(prompt) {
     return { action: 'codex_quit' };
   }
 
+  if (/^(?:disconnect|turn off|stop|close) (?:the )?(?:vpn|surfshark|surf shark)$/.test(cleanPrompt)) {
+    return { action: 'surfshark_disconnect' };
+  }
+
+  if (/^(?:(?:connect|start|turn on|refresh|restart) (?:the )?(?:vpn|surfshark|surf shark)|(?:refresh|restart) (?:the )?(?:usa|u\.s\.|us|united states) (?:vpn|surfshark|surf shark))$/.test(cleanPrompt)) {
+    return { action: 'surfshark_connect_us' };
+  }
+
   const searchMatch = cleanPrompt.match(/^(?:search|find) (peacock|peacock tv|disney|disney plus|netflix|youtube|you tube|hulu|prime|prime video) (?:for )?(.+)$/);
   if (searchMatch) {
     return { action: 'browser_search', site: searchMatch[1], query: searchMatch[2] };
@@ -268,6 +278,8 @@ function spokenConfirmation(mediaAction) {
   if (mediaAction.action === 'codex_status') return 'Checking Codex status.';
   if (mediaAction.action === 'codex_cancel') return 'Cancelling Codex.';
   if (mediaAction.action === 'codex_quit') return 'Closing Codex.';
+  if (mediaAction.action === 'surfshark_disconnect') return 'Disconnecting Surfshark.';
+  if (mediaAction.action === 'surfshark_connect_us') return 'Connecting Surfshark.';
   if (mediaAction.action === 'browser_open') return `Opening ${mediaAction.site}.`;
   if (mediaAction.action === 'browser_search') return `Searching ${mediaAction.site}.`;
   if (mediaAction.action === 'browser_command') return `${mediaAction.command}.`;

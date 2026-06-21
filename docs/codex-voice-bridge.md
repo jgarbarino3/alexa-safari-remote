@@ -15,6 +15,8 @@ separate SQS actions:
 - `codex_status`
 - `codex_cancel`
 - `codex_quit`
+- `surfshark_connect_us`
+- `surfshark_disconnect`
 - `browser_open`
 - `browser_search`
 - `browser_command`
@@ -28,6 +30,8 @@ Alexa, open Codex
 Alexa, ask Codex to open Peacock
 Alexa, ask Codex to search Disney for Andor
 Alexa, ask Codex to live Codex use Chrome and find my episode
+Alexa, ask Codex to disconnect VPN
+Alexa, ask Codex to refresh VPN
 Alexa, ask Codex for status
 Alexa, ask Codex to cancel
 Alexa, ask Codex to close Codex
@@ -52,8 +56,13 @@ Codex connect Surfshark Canada then open Netflix
 Those short in-session phrases are sent through `live_codex_prompt`.
 The Mac agent automatically adds a finishing instruction for live Chrome/video
 tasks: leave Google Chrome frontmost, and make the player fullscreen when
-playback is visible. If a login, profile picker, region block, or CAPTCHA stops
-that, Codex should leave the blocker visible in Chrome.
+playback is visible. It also tells Codex not to open browser history or other
+protected local browser data to infer recently watched episodes, because that
+can trigger approval prompts on the TV Mac. Codex should use visible streaming
+site UI such as Continue Watching, search, and episode pages instead. Before
+ending, Codex should do a final visual/state check that Chrome is frontmost and
+the player is actually fullscreen. If a login, profile picker, region block, or
+CAPTCHA stops that, Codex should leave the blocker visible in Chrome.
 
 If a live prompt mentions Surfshark/VPN plus a country, the Mac agent first
 opens Surfshark and makes a best-effort attempt to search/select that country
@@ -168,6 +177,18 @@ United States Fastest. The bridge can then use the single Quick-connect button
 instead of searching the country list. Other country prompts still use the
 search field and then click Quick-connect.
 
+To toggle Surfshark without running a live Codex browser task:
+
+```text
+Alexa, ask Codex to disconnect VPN
+Alexa, ask Codex to refresh VPN
+Alexa, ask Codex to connect Surfshark
+```
+
+`refresh VPN` clicks the same Surfshark Quick-connect button again. If
+Surfshark is connected, say `disconnect VPN` first, then `refresh VPN` to get a
+fresh United States Fastest connection.
+
 ## Logs
 
 Agent log:
@@ -216,8 +237,10 @@ was found in `PATH`, no matching Shortcut was found, and AppleScript dictionary
 inspection could not confirm native script commands with the current command
 line tools setup.
 
-V1 does not implement native Surfshark VPN control. A safe fallback is opening
-the Surfshark app or URL scheme for manual GUI control.
+The bridge uses GUI automation as the supported local fallback: open/activate
+Surfshark, then click the verified Quick-connect point with `cliclick`. This is
+layout-dependent, but currently works on the TV Mac with Surfshark's
+Quick-connect target set to United States Fastest.
 
 ## Safety Notes
 
