@@ -9,6 +9,9 @@ const ACTION_BY_INTENT = {
   ToggleIntent: { action: 'toggle' },
   FullscreenIntent: { action: 'fullscreen' },
   EscapeIntent: { action: 'escape' },
+  OpenCodexIntent: { action: 'open_codex' },
+  CodexStatusIntent: { action: 'codex_status' },
+  CancelCodexIntent: { action: 'codex_cancel' },
 };
 
 exports.handler = async (event) => {
@@ -46,6 +49,12 @@ function buildMediaAction(intent) {
 
   if (ACTION_BY_INTENT[intentName]) {
     return ACTION_BY_INTENT[intentName];
+  }
+
+  if (intentName === 'AskCodexIntent') {
+    const prompt = slotValue(intent, 'prompt');
+    if (!prompt) return null;
+    return { action: 'codex_task', prompt };
   }
 
   if (intentName === 'RelativeSeekIntent') {
@@ -134,6 +143,10 @@ function spokenConfirmation(mediaAction) {
   if (mediaAction.action === 'seek') return `Going to ${formatTime(mediaAction.seconds)}.`;
   if (mediaAction.action === 'fullscreen') return 'Fullscreen.';
   if (mediaAction.action === 'escape') return 'Exiting fullscreen.';
+  if (mediaAction.action === 'open_codex') return 'Opening Codex. Prompt intake is armed for ten minutes.';
+  if (mediaAction.action === 'codex_task') return 'Sent to Codex.';
+  if (mediaAction.action === 'codex_status') return 'Checking Codex status.';
+  if (mediaAction.action === 'codex_cancel') return 'Cancelling Codex.';
   return `${mediaAction.action}.`;
 }
 

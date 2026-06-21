@@ -7,6 +7,8 @@ import argparse
 import json
 import os
 import shlex
+import shutil
+import signal
 import subprocess
 import sys
 import time
@@ -17,6 +19,8 @@ from pathlib import Path
 DEFAULT_CONFIG = Path.home() / ".config" / "alexa-safari-remote" / "aws-bridge.env"
 DEFAULT_LOG = Path.home() / ".local" / "state" / "alexa-safari-remote" / "aws-sqs-agent.log"
 DEFAULT_SAFARI_REMOTE = Path.home() / ".local" / "bin" / "safari-remote"
+DEFAULT_CODEX_STATE_DIR = Path.home() / ".local" / "state" / "alexa-safari-remote" / "codex"
+CODEX_ACTIONS = {"open_codex", "codex_task", "codex_status", "codex_cancel"}
 
 
 class AgentError(Exception):
@@ -49,6 +53,14 @@ class SqsAgent:
         self.visibility_timeout = int(config.get("VISIBILITY_TIMEOUT_SECONDS", "45"))
         self.safari_remote = Path(config.get("SAFARI_REMOTE_PATH", str(DEFAULT_SAFARI_REMOTE)))
         self.log_file = Path(config.get("AGENT_LOG_FILE", str(DEFAULT_LOG)))
+        self.codex_workspace = Path(config.get("CODEX_WORKSPACE_PATH", str(Path.home()))).expanduser()
+        self.codex_path = config.get("CODEX_CLI_PATH") or shutil.which("codex") or "/Applications/Codex.app/Contents/Resources/codex"
+        self.codex_arm_seconds = int(config.get("CODEX_ARM_SECONDS", "600"))
+        self.codex_task_timeout = int(config.get("CODEX_TASK_TIMEOUT_SECONDS", "600"))
+        self.codex_state_dir = Path(config.get("CODEX_STATE_DIR", str(DEFAULT_CODEX_STATE_DIR))).expanduser()
+        self.codex_status_file = self.codex_state_dir / "status.json"
+        self.codex_lock_file = self.codex_state_dir / "task.lock"
+        self.codex_transcript_log = self.codex_state_dir / "transcripts.log"
 
     def run_forever(self) -> int:
         self.log("agent_start")
@@ -73,13 +85,30 @@ class SqsAgent:
 
         try:
             media_action = json.loads(body_text)
-            argv = command_for_message(media_action, self.safari_remote)
+            action_name = normalized_action(media_action)
         except Exception as error:
             self.log("invalid_message", message_id=message_id, error=str(error))
             if receipt_handle:
                 self.delete_message(str(receipt_handle))
             return 2
 
+        try:
+            if action_name in CODEX_ACTIONS:
+                returncode = self.handle_codex_action(media_action, message_id)
+            else:
+                argv = command_for_message(media_action, self.safari_remote)
+                returncode = self.run_safari_command(argv, message_id)
+        except Exception as error:
+            self.log("command_error", message_id=message_id, action=action_name, error=str(error))
+            returncode = 1
+
+        if receipt_handle:
+            self.delete_message(str(receipt_handle))
+            self.log("message_deleted", message_id=message_id, action=action_name)
+
+        return returncode
+
+    def run_safari_command(self, argv: list[str], message_id: str) -> int:
         action_name = action_from_argv(argv)
         self.log("command_start", message_id=message_id, action=action_name)
         completed = subprocess.run(argv, text=True, capture_output=True, check=False)
@@ -91,12 +120,163 @@ class SqsAgent:
             stdout=completed.stdout.strip(),
             stderr=completed.stderr.strip(),
         )
-
-        if receipt_handle:
-            self.delete_message(str(receipt_handle))
-            self.log("message_deleted", message_id=message_id, action=action_name)
-
         return completed.returncode
+
+    def handle_codex_action(self, message: dict[str, object], message_id: str) -> int:
+        self.codex_state_dir.mkdir(parents=True, exist_ok=True)
+        self.reap_codex_task()
+
+        action = normalized_action(message)
+        self.log("codex_action_start", message_id=message_id, action=action)
+
+        if action == "open_codex":
+            return self.open_codex(message_id)
+        if action == "codex_task":
+            return self.start_codex_task(str(message.get("prompt", "")).strip(), message_id)
+        if action == "codex_status":
+            return self.write_codex_status_event("status_requested", message_id)
+        if action == "codex_cancel":
+            return self.cancel_codex_task(message_id)
+
+        self.log("codex_action_error", message_id=message_id, action=action, error="unsupported_codex_action")
+        return 2
+
+    def open_codex(self, message_id: str) -> int:
+        if not self.codex_workspace.exists():
+            self.update_codex_status({"state": "error", "error": "workspace_missing"})
+            self.log("codex_open_failed", message_id=message_id, error="workspace_missing")
+            return 2
+
+        subprocess.Popen([self.codex_path, "app", str(self.codex_workspace)], start_new_session=True)
+        armed_until = int(time.time()) + self.codex_arm_seconds
+        self.update_codex_status({
+            "state": "armed",
+            "armed_until": armed_until,
+            "workspace": str(self.codex_workspace),
+            "task_pid": None,
+            "task_started_at": None,
+            "last_prompt": "",
+        })
+        self.log("codex_opened", message_id=message_id, armed_until=str(armed_until), workspace=str(self.codex_workspace))
+        return 0
+
+    def start_codex_task(self, prompt: str, message_id: str) -> int:
+        if not prompt:
+            self.log("codex_task_rejected", message_id=message_id, reason="missing_prompt")
+            self.write_codex_status_event("task_rejected_missing_prompt", message_id)
+            return 2
+        if not self.codex_is_armed():
+            self.log("codex_task_rejected", message_id=message_id, reason="not_armed")
+            self.write_codex_status_event("task_rejected_not_armed", message_id)
+            return 3
+        if self.codex_lock_file.exists():
+            self.log("codex_task_rejected", message_id=message_id, reason="task_running")
+            self.write_codex_status_event("task_rejected_task_running", message_id)
+            return 4
+
+        transcript_path = self.codex_state_dir / f"task-{datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ')}.log"
+        transcript_handle = transcript_path.open("a", encoding="utf-8")
+        transcript_handle.write(f"{utc_now()} event=task_start prompt={shell_word(prompt)}\n")
+        transcript_handle.flush()
+
+        process = subprocess.Popen(
+            [self.codex_path, "exec", "-C", str(self.codex_workspace), prompt],
+            stdout=transcript_handle,
+            stderr=subprocess.STDOUT,
+            text=True,
+            start_new_session=True,
+        )
+        transcript_handle.close()
+
+        self.codex_lock_file.write_text(str(process.pid), encoding="utf-8")
+        self.update_codex_status({
+            "state": "running",
+            "armed_until": self.read_codex_status().get("armed_until"),
+            "workspace": str(self.codex_workspace),
+            "task_pid": process.pid,
+            "task_started_at": int(time.time()),
+            "task_timeout_seconds": self.codex_task_timeout,
+            "transcript": str(transcript_path),
+            "last_prompt": prompt,
+        })
+        with self.codex_transcript_log.open("a", encoding="utf-8") as handle:
+            handle.write(f"{utc_now()} event=task_queued pid={process.pid} transcript={shell_word(str(transcript_path))}\n")
+        self.log("codex_task_started", message_id=message_id, pid=str(process.pid), transcript=str(transcript_path))
+        return 0
+
+    def cancel_codex_task(self, message_id: str) -> int:
+        status = self.read_codex_status()
+        pid = int(status.get("task_pid") or 0)
+        if pid and process_is_running(pid):
+            try:
+                os.killpg(pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            self.update_codex_status({"state": "cancelled", "task_pid": None})
+            self.clear_codex_lock()
+            self.log("codex_task_cancelled", message_id=message_id, pid=str(pid))
+            return 0
+
+        self.update_codex_status({"state": "idle", "task_pid": None})
+        self.clear_codex_lock()
+        self.log("codex_cancel_no_task", message_id=message_id)
+        return 0
+
+    def reap_codex_task(self) -> None:
+        status = self.read_codex_status()
+        pid = int(status.get("task_pid") or 0)
+        started_at = int(status.get("task_started_at") or 0)
+        if pid <= 0:
+            self.clear_codex_lock_if_stale(pid)
+            return
+
+        if not process_is_running(pid):
+            self.update_codex_status({"state": "finished", "task_pid": None})
+            self.clear_codex_lock()
+            return
+
+        if started_at and time.time() - started_at > self.codex_task_timeout:
+            try:
+                os.killpg(pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+            self.update_codex_status({"state": "timeout", "task_pid": None})
+            self.clear_codex_lock()
+            self.log("codex_task_timeout", pid=str(pid))
+
+    def codex_is_armed(self) -> bool:
+        status = self.read_codex_status()
+        return int(status.get("armed_until") or 0) >= int(time.time())
+
+    def write_codex_status_event(self, event: str, message_id: str) -> int:
+        status = self.read_codex_status()
+        self.log("codex_status", message_id=message_id, state=str(status.get("state", "unknown")), status_event=event)
+        return 0
+
+    def read_codex_status(self) -> dict[str, object]:
+        if not self.codex_status_file.exists():
+            return {}
+        try:
+            return json.loads(self.codex_status_file.read_text(encoding="utf-8"))
+        except json.JSONDecodeError:
+            return {"state": "error", "error": "invalid_status_json"}
+
+    def update_codex_status(self, updates: dict[str, object]) -> None:
+        self.codex_state_dir.mkdir(parents=True, exist_ok=True)
+        status = self.read_codex_status()
+        status.update(updates)
+        status["updated_at"] = utc_now()
+        self.codex_status_file.write_text(json.dumps(status, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    def clear_codex_lock_if_stale(self, pid: int) -> None:
+        if self.codex_lock_file.exists() and (pid <= 0 or not process_is_running(pid)):
+            self.clear_codex_lock()
+
+    def clear_codex_lock(self) -> None:
+        try:
+            self.codex_lock_file.unlink()
+        except FileNotFoundError:
+            pass
 
     def receive_message(self) -> dict[str, object] | None:
         result = run_aws_json(self.aws_args([
@@ -147,7 +327,7 @@ class SqsAgent:
 
 
 def command_for_message(message: dict[str, object], safari_remote: Path) -> list[str]:
-    action = str(message.get("action", "")).strip().lower()
+    action = normalized_action(message)
     if action in {"play", "pause", "toggle", "fullscreen", "escape"}:
         return [str(safari_remote), action]
 
@@ -160,6 +340,10 @@ def command_for_message(message: dict[str, object], safari_remote: Path) -> list
         return [str(safari_remote), "seek", str(seconds)]
 
     raise AgentError(f"Unsupported action: {action}")
+
+
+def normalized_action(message: dict[str, object]) -> str:
+    return str(message.get("action", "")).strip().lower()
 
 
 def action_from_argv(argv: list[str]) -> str:
@@ -220,6 +404,20 @@ def strip_quotes(value: str) -> str:
 
 def shell_word(value: str) -> str:
     return shlex.quote(str(value))
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def process_is_running(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
 
 
 if __name__ == "__main__":

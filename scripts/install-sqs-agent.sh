@@ -6,6 +6,18 @@ CONFIG_FILE="${ALEXA_SAFARI_REMOTE_AWS_CONFIG:-$HOME/.config/alexa-safari-remote
 PLIST="$HOME/Library/LaunchAgents/com.alexa-safari-remote.sqs-agent.plist"
 LABEL="com.alexa-safari-remote.sqs-agent"
 AGENT_BIN="$HOME/.local/bin/safari-remote-sqs-agent"
+CODEX_BIN="$(command -v codex || true)"
+if [[ -z "$CODEX_BIN" && -x /Applications/Codex.app/Contents/Resources/codex ]]; then
+  CODEX_BIN="/Applications/Codex.app/Contents/Resources/codex"
+fi
+
+ensure_config_value() {
+  local key="$1"
+  local value="$2"
+  if ! grep -q "^$key=" "$CONFIG_FILE"; then
+    printf '%s=%s\n' "$key" "$value" >>"$CONFIG_FILE"
+  fi
+}
 
 if [[ ! -f "$CONFIG_FILE" ]]; then
   echo "Missing config file: $CONFIG_FILE" >&2
@@ -19,6 +31,13 @@ if ! command -v aws >/dev/null 2>&1; then
 fi
 
 "$ROOT_DIR/install.sh" >/dev/null
+
+ensure_config_value "CODEX_WORKSPACE_PATH" "$ROOT_DIR"
+if [[ -n "$CODEX_BIN" ]]; then
+  ensure_config_value "CODEX_CLI_PATH" "$CODEX_BIN"
+fi
+ensure_config_value "CODEX_ARM_SECONDS" "600"
+ensure_config_value "CODEX_TASK_TIMEOUT_SECONDS" "600"
 
 mkdir -p "$HOME/Library/LaunchAgents"
 

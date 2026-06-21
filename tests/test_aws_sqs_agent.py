@@ -4,6 +4,7 @@ from pathlib import Path
 import importlib.util
 import json
 import tempfile
+import time
 import unittest
 
 
@@ -86,6 +87,75 @@ class AgentProcessingTest(unittest.TestCase):
 
             log_text = (Path(tmp) / "agent.log").read_text(encoding="utf-8")
             self.assertIn("event=message_deleted", log_text)
+
+    def test_codex_open_arms_prompt_intake(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            codex = root / "codex"
+            calls = root / "calls.log"
+            codex.write_text(f"#!/usr/bin/env bash\necho \"$@\" >> {calls}\n", encoding="utf-8")
+            codex.chmod(0o755)
+
+            sqs_agent = agent.SqsAgent(
+                {
+                    "QUEUE_URL": "https://example.invalid/queue",
+                    "CODEX_CLI_PATH": str(codex),
+                    "CODEX_WORKSPACE_PATH": str(root),
+                    "CODEX_STATE_DIR": str(root / "state"),
+                    "AGENT_LOG_FILE": str(root / "agent.log"),
+                }
+            )
+
+            self.assertEqual(sqs_agent.handle_codex_action({"action": "open_codex"}, "message-1"), 0)
+            status = json.loads((root / "state" / "status.json").read_text(encoding="utf-8"))
+            self.assertEqual(status["state"], "armed")
+            self.assertGreater(status["armed_until"], int(time.time()))
+            wait_for_path(calls)
+            self.assertIn(f"app {root}", calls.read_text(encoding="utf-8"))
+
+    def test_codex_task_uses_workspace_prompt_lock_and_cancel(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            codex = root / "codex"
+            calls = root / "calls.log"
+            codex.write_text(
+                f"#!/usr/bin/env bash\necho \"$@\" >> {calls}\nsleep 30\n",
+                encoding="utf-8",
+            )
+            codex.chmod(0o755)
+
+            sqs_agent = agent.SqsAgent(
+                {
+                    "QUEUE_URL": "https://example.invalid/queue",
+                    "CODEX_CLI_PATH": str(codex),
+                    "CODEX_WORKSPACE_PATH": str(root),
+                    "CODEX_STATE_DIR": str(root / "state"),
+                    "AGENT_LOG_FILE": str(root / "agent.log"),
+                }
+            )
+            sqs_agent.update_codex_status({"state": "armed", "armed_until": int(time.time()) + 600})
+
+            self.assertEqual(
+                sqs_agent.handle_codex_action({"action": "codex_task", "prompt": "summarize status"}, "message-2"),
+                0,
+            )
+            self.assertTrue((root / "state" / "task.lock").exists())
+            wait_for_path(calls)
+            self.assertIn(f"exec -C {root} summarize status", calls.read_text(encoding="utf-8"))
+            self.assertEqual(
+                sqs_agent.handle_codex_action({"action": "codex_task", "prompt": "second task"}, "message-3"),
+                4,
+            )
+            self.assertEqual(sqs_agent.handle_codex_action({"action": "codex_cancel"}, "message-4"), 0)
+
+
+def wait_for_path(path: Path, timeout: float = 2.0) -> None:
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if path.exists():
+            return
+        time.sleep(0.05)
+    raise AssertionError(f"Timed out waiting for {path}")
 
 
 if __name__ == "__main__":

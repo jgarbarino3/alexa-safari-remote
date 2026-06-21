@@ -7,6 +7,7 @@ const { handler } = require('./index');
 async function main() {
   await testDryRun();
   await testBridgePayload();
+  await testCodexPromptPayload();
   console.log('OK:lambda-tests');
 }
 
@@ -61,6 +62,47 @@ async function testBridgePayload() {
 
     assert.strictEqual(result.response.outputSpeech.text, 'Skipping forward 30 seconds.');
     assert.deepStrictEqual(receivedBodies, [{ action: 'forward', seconds: 30 }]);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    delete process.env.REMOTE_ENDPOINT_URL;
+  }
+}
+
+async function testCodexPromptPayload() {
+  delete process.env.ALEXA_SAFARI_REMOTE_QUEUE_URL;
+
+  const receivedBodies = [];
+  const server = http.createServer((request, response) => {
+    let body = '';
+    request.on('data', (chunk) => {
+      body += chunk;
+    });
+    request.on('end', () => {
+      receivedBodies.push(JSON.parse(body));
+      response.writeHead(204);
+      response.end();
+    });
+  });
+
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  process.env.REMOTE_ENDPOINT_URL = `http://127.0.0.1:${address.port}/command`;
+
+  try {
+    const result = await handler({
+      request: {
+        type: 'IntentRequest',
+        intent: {
+          name: 'AskCodexIntent',
+          slots: {
+            prompt: { value: 'summarize the repo status' },
+          },
+        },
+      },
+    });
+
+    assert.strictEqual(result.response.outputSpeech.text, 'Sent to Codex.');
+    assert.deepStrictEqual(receivedBodies, [{ action: 'codex_task', prompt: 'summarize the repo status' }]);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     delete process.env.REMOTE_ENDPOINT_URL;

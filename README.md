@@ -216,6 +216,15 @@ For the newer Mac / iPhone Mirroring handoff, follow:
 docs/newer-mac-alexa-handoff.md
 ```
 
+## Alexa To Codex Voice Bridge
+
+The AWS SQS bridge can also open Codex and pass a spoken prompt to `codex exec`
+on this Mac. See:
+
+```text
+docs/codex-voice-bridge.md
+```
+
 ## Project Terms
 
 See `CONTEXT.md` for the domain terms, and `docs/adr/` for the current architecture decision.
