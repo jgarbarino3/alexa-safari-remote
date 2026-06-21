@@ -28,6 +28,14 @@ The local command supports:
 - `escape`
 - `selftest`
 
+The repo also includes a separate Codex voice bridge:
+
+- `codex-voice-bridge open`
+- `codex-voice-bridge ask <prompt>`
+- `codex-voice-bridge status`
+- `codex-voice-bridge cancel`
+- `codex-voice-bridge open-surfshark`
+
 It first tries to control the active HTML5 `<video>` element in Safari. That is the reliable path for streaming sites with different button layouts, because it changes the actual video state instead of clicking on Peacock, Disney, Netflix, or YouTube controls by coordinate.
 
 If page-level video control is blocked, it falls back to Safari keyboard controls:
@@ -203,7 +211,7 @@ alexa-skill/
 It includes:
 
 - an Alexa interaction model using invocation name `tv remote`
-- a Lambda handler that parses play/pause/seek commands
+- a Lambda handler that parses play/pause/seek commands and Codex task commands
 - a bridge contract: `POST { "action": "seek", "seconds": 754 }`
 
 Important: Alexa custom skill code runs in the cloud. It cannot directly execute commands on your Mac unless we provide a bridge. The cleanest bridge choices are:
@@ -213,6 +221,25 @@ Important: Alexa custom skill code runs in the cloud. It cannot directly execute
 3. a secure tunnel or VPN endpoint
 
 The custom skill is worth building after local Safari control is proven on the actual streaming sites.
+
+## Codex Voice Bridge
+
+The Codex bridge lets Alexa open/arm Codex on the TV Mac and then send one
+arbitrary prompt through Codex:
+
+```text
+Alexa -> custom skill -> relay/SQS -> codex-voice-bridge -> codex app/codex exec
+```
+
+The bridge intentionally does not type into the Codex Desktop UI. `codex app`
+only opens the app; the prompt is executed with `codex exec` so Codex keeps its
+normal sandbox and approval behavior.
+
+See:
+
+```text
+docs/codex-voice-bridge.md
+```
 
 ## Project Terms
 

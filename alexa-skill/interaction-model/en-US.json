@@ -93,6 +93,46 @@
           ]
         },
         {
+          "name": "OpenCodexIntent",
+          "samples": [
+            "open codex",
+            "start codex",
+            "arm codex",
+            "wake codex"
+          ]
+        },
+        {
+          "name": "AskCodexIntent",
+          "slots": [
+            {
+              "name": "prompt",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "ask codex to {prompt}",
+            "tell codex to {prompt}",
+            "have codex {prompt}",
+            "codex {prompt}"
+          ]
+        },
+        {
+          "name": "CodexStatusIntent",
+          "samples": [
+            "codex status",
+            "check codex",
+            "is codex running"
+          ]
+        },
+        {
+          "name": "CancelCodexIntent",
+          "samples": [
+            "cancel codex",
+            "stop codex",
+            "disarm codex"
+          ]
+        },
+        {
           "name": "AMAZON.HelpIntent",
           "samples": []
         },

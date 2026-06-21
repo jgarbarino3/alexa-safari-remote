@@ -9,13 +9,20 @@ mkdir -p "$INSTALL_DIR/bin" "$INSTALL_DIR/lib" "$BIN_DIR"
 
 cp "$REPO_DIR/bin/safari-remote" "$INSTALL_DIR/bin/safari-remote"
 cp "$REPO_DIR/bin/prime-permissions" "$INSTALL_DIR/bin/prime-permissions"
+cp "$REPO_DIR/bin/codex-voice-bridge" "$INSTALL_DIR/bin/codex-voice-bridge"
+cp "$REPO_DIR/bin/alexa-bridge-dispatch" "$INSTALL_DIR/bin/alexa-bridge-dispatch"
 cp "$REPO_DIR/lib/safari-media-control.jxa.js" "$INSTALL_DIR/lib/safari-media-control.jxa.js"
 cp "$REPO_DIR/lib/prime-permissions.jxa.js" "$INSTALL_DIR/lib/prime-permissions.jxa.js"
+cp "$REPO_DIR/lib/codex_voice_bridge.py" "$INSTALL_DIR/lib/codex_voice_bridge.py"
+cp "$REPO_DIR/lib/bridge_dispatch.py" "$INSTALL_DIR/lib/bridge_dispatch.py"
 
-chmod +x "$INSTALL_DIR/bin/safari-remote" "$INSTALL_DIR/bin/prime-permissions"
+chmod +x "$INSTALL_DIR/bin/safari-remote" "$INSTALL_DIR/bin/prime-permissions" "$INSTALL_DIR/bin/codex-voice-bridge" "$INSTALL_DIR/bin/alexa-bridge-dispatch"
+chmod +x "$INSTALL_DIR/lib/codex_voice_bridge.py" "$INSTALL_DIR/lib/bridge_dispatch.py"
 
 ln -sf "$INSTALL_DIR/bin/safari-remote" "$BIN_DIR/safari-remote"
 ln -sf "$INSTALL_DIR/bin/prime-permissions" "$BIN_DIR/safari-remote-prime-permissions"
+ln -sf "$INSTALL_DIR/bin/codex-voice-bridge" "$BIN_DIR/codex-voice-bridge"
+ln -sf "$INSTALL_DIR/bin/alexa-bridge-dispatch" "$BIN_DIR/alexa-bridge-dispatch"
 
 cat <<EOF
 Installed Alexa Safari Remote.
@@ -25,6 +32,9 @@ Commands:
   $BIN_DIR/safari-remote back 10
   $BIN_DIR/safari-remote seek 12:34
   $BIN_DIR/safari-remote-prime-permissions
+  $BIN_DIR/codex-voice-bridge open
+  $BIN_DIR/codex-voice-bridge ask open example dot com
+  $BIN_DIR/alexa-bridge-dispatch --dry-run action.json
 
 If $BIN_DIR is not on PATH, add this to your shell profile:
   export PATH="\$HOME/.local/bin:\$PATH"

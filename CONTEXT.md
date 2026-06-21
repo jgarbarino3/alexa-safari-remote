@@ -21,3 +21,11 @@ Jumping to an absolute timestamp in the current video, such as `12:34`. Exact Se
 ### Keyboard Fallback
 
 The less precise control path that sends Safari keystrokes when page-level video control is unavailable.
+
+### Codex Task
+
+An arbitrary user prompt sent from Alexa to Codex on the TV Mac. Codex Tasks are separate from Media Actions because they can ask Codex to use tools, browse, or work in a repository.
+
+### Armed Codex Session
+
+A short-lived state where the TV Mac has opened Codex and will accept one or more Codex Tasks. The user enters this state by saying the open-Codex voice command first.

@@ -6,6 +6,9 @@ const ACTION_BY_INTENT = {
   ToggleIntent: { action: 'toggle' },
   FullscreenIntent: { action: 'fullscreen' },
   EscapeIntent: { action: 'escape' },
+  OpenCodexIntent: { action: 'open_codex' },
+  CodexStatusIntent: { action: 'codex_status' },
+  CancelCodexIntent: { action: 'codex_cancel' },
 };
 
 exports.handler = async (event) => {
@@ -16,13 +19,13 @@ exports.handler = async (event) => {
   }
 
   if (request.type !== 'IntentRequest') {
-    return response('I can control play, pause, rewind, fast forward, fullscreen, and exact seek.');
+    return response('I can control playback, open Codex, and send a prompt to Codex.');
   }
 
   const intentName = request.intent && request.intent.name;
 
   if (intentName === 'AMAZON.HelpIntent') {
-    return response('Try pause, rewind ten seconds, or go to twelve minutes thirty seconds.');
+    return response('Try pause, open Codex, or ask Codex to open Peacock.');
   }
 
   if (intentName === 'AMAZON.CancelIntent' || intentName === 'AMAZON.StopIntent') {
@@ -61,6 +64,12 @@ function buildMediaAction(intent) {
     return { action: 'seek', seconds: hours * 3600 + minutes * 60 + seconds };
   }
 
+  if (intentName === 'AskCodexIntent') {
+    const prompt = rawSlotValue(intent, 'prompt').trim();
+    if (!prompt) return null;
+    return { action: 'codex_task', prompt };
+  }
+
   return null;
 }
 
@@ -93,6 +102,11 @@ function slotValue(intent, slotName) {
   return slot && slot.value ? String(slot.value).toLowerCase() : '';
 }
 
+function rawSlotValue(intent, slotName) {
+  const slot = intent && intent.slots && intent.slots[slotName];
+  return slot && slot.value ? String(slot.value) : '';
+}
+
 function positiveNumber(value) {
   const number = Number(value);
   if (!Number.isFinite(number) || number < 0) return null;
@@ -104,6 +118,10 @@ function spokenConfirmation(mediaAction) {
   if (mediaAction.action === 'forward') return `Skipping forward ${mediaAction.seconds} seconds.`;
   if (mediaAction.action === 'seek') return `Going to ${formatTime(mediaAction.seconds)}.`;
   if (mediaAction.action === 'escape') return 'Exiting fullscreen.';
+  if (mediaAction.action === 'open_codex') return 'Opening Codex.';
+  if (mediaAction.action === 'codex_task') return 'Sent to Codex.';
+  if (mediaAction.action === 'codex_status') return 'Checking Codex status.';
+  if (mediaAction.action === 'codex_cancel') return 'Cancelling Codex.';
   return `${mediaAction.action}.`;
 }
 
