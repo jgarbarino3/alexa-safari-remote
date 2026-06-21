@@ -69,6 +69,28 @@ For debugging, inspect the local command without running it:
 alexa-bridge-dispatch --dry-run action.json
 ```
 
+## Install The SQS Agent
+
+The repo includes a dependency-light SQS polling agent that uses the AWS CLI:
+
+```bash
+export ALEXA_SQS_QUEUE_URL="https://sqs.REGION.amazonaws.com/ACCOUNT/QUEUE"
+export ALEXA_CODEX_WORKSPACE="$HOME/Documents/Codex"
+./scripts/install-sqs-agent.sh
+```
+
+The installer writes this LaunchAgent:
+
+```text
+~/Library/LaunchAgents/local.alexa-safari-remote.aws-sqs-agent.plist
+```
+
+Smoke test after AWS auth is valid:
+
+```bash
+./scripts/aws-bridge-smoke-test.sh --wait-log
+```
+
 ## Browser Control
 
 The bridge does not automate streaming sites directly. Prompts such as "open

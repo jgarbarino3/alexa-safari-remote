@@ -228,7 +228,7 @@ The Codex bridge lets Alexa open/arm Codex on the TV Mac and then send one
 arbitrary prompt through Codex:
 
 ```text
-Alexa -> custom skill -> relay/SQS -> codex-voice-bridge -> codex app/codex exec
+Alexa -> custom skill -> SQS -> aws-sqs-agent -> alexa-bridge-dispatch -> codex-voice-bridge -> codex app/codex exec
 ```
 
 The bridge intentionally does not type into the Codex Desktop UI. `codex app`
@@ -239,6 +239,14 @@ See:
 
 ```text
 docs/codex-voice-bridge.md
+```
+
+The SQS polling agent can be installed on the TV Mac after AWS auth and queue
+configuration are ready:
+
+```bash
+export ALEXA_SQS_QUEUE_URL="https://sqs.REGION.amazonaws.com/ACCOUNT/QUEUE"
+./scripts/install-sqs-agent.sh
 ```
 
 ## Project Terms
