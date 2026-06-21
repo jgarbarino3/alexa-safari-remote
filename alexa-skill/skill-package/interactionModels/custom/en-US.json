@@ -96,7 +96,11 @@
           "name": "OpenCodexIntent",
           "samples": [
             "open codex",
+            "launch codex",
             "start codex",
+            "reopen codex",
+            "open the codex app",
+            "launch the codex app",
             "arm codex",
             "wake codex",
             "get codex ready"

@@ -173,6 +173,15 @@ async function invokeWithSession(intent, attributes) {
   {
     const { result, calls } = await invoke({
       name: 'AskCodexIntent',
+      slots: { prompt: { value: 'launch codex' } },
+    });
+    assert.deepStrictEqual(calls[0], { action: 'open_codex' });
+    assert.strictEqual(result.response.outputSpeech.text, 'Opening Codex. Prompt intake is armed for ten minutes.');
+  }
+
+  {
+    const { result, calls } = await invoke({
+      name: 'AskCodexIntent',
       slots: { prompt: { value: 'close codex' } },
     });
     assert.deepStrictEqual(calls[0], { action: 'codex_quit' });

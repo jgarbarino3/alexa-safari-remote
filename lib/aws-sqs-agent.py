@@ -215,7 +215,13 @@ class SqsAgent:
             self.log("codex_open_failed", message_id=message_id, error="workspace_missing")
             return 2
 
-        subprocess.Popen([self.codex_path, "app", str(self.codex_workspace)], start_new_session=True)
+        try:
+            subprocess.Popen([self.codex_path, "app", str(self.codex_workspace)], start_new_session=True)
+        except OSError as error:
+            self.update_codex_status({"state": "error", "error": "codex_open_failed"})
+            self.log("codex_open_failed", message_id=message_id, error=str(error))
+            return 2
+
         new_chat_ok = self.open_codex_new_chat() if self.codex_new_chat_on_open else False
         armed_until = int(time.time()) + self.codex_arm_seconds
         self.update_codex_status({

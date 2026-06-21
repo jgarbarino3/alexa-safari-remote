@@ -161,7 +161,11 @@ function actionFromCodexPrompt(prompt) {
     }
   }
 
-  if (['quit codex', 'close codex', 'shut down codex'].includes(cleanPrompt)) {
+  if (/^(?:open|launch|start|wake|arm|reopen) (?:the )?(?:codex|codex app)$/.test(cleanPrompt)) {
+    return { action: 'open_codex' };
+  }
+
+  if (['quit codex', 'close codex', 'shut down codex', 'close the codex app', 'quit the codex app'].includes(cleanPrompt)) {
     return { action: 'codex_quit' };
   }
 
