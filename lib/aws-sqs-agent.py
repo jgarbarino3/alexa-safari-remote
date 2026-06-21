@@ -63,6 +63,7 @@ class SqsAgent:
         self.browser_worker = Path(config.get("BROWSER_WORKER_PATH", str(DEFAULT_BROWSER_WORKER))).expanduser()
         self.live_codex_delay = float(config.get("LIVE_CODEX_FOCUS_DELAY_SECONDS", "0.8"))
         self.codex_new_chat_on_open = config.get("CODEX_NEW_CHAT_ON_OPEN", "1").strip().lower() not in {"0", "false", "no"}
+        self.surfshark_prepare_on_live_prompt = config.get("SURFSHARK_PREPARE_ON_LIVE_PROMPT", "1").strip().lower() not in {"0", "false", "no"}
         self.codex_status_file = self.codex_state_dir / "status.json"
         self.codex_lock_file = self.codex_state_dir / "task.lock"
         self.codex_transcript_log = self.codex_state_dir / "transcripts.log"
@@ -274,7 +275,11 @@ class SqsAgent:
             self.write_codex_status_event("live_prompt_rejected_not_armed", message_id)
             return 3
 
-        live_prompt = live_codex_prompt_text(prompt)
+        surfshark_prepared = False
+        if self.surfshark_prepare_on_live_prompt and prompt_requests_surfshark_us(prompt):
+            surfshark_prepared = self.prepare_surfshark_us_fastest(message_id)
+
+        live_prompt = live_codex_prompt_text(prompt, surfshark_prepared=surfshark_prepared)
         script = [
             'on run argv',
             'set promptText to item 1 of argv',
@@ -306,6 +311,40 @@ class SqsAgent:
                 stderr=completed.stderr.strip(),
             )
         return completed.returncode
+
+    def prepare_surfshark_us_fastest(self, message_id: str) -> bool:
+        self.log("surfshark_prepare_start", message_id=message_id, target="us_fastest")
+        script = [
+            'tell application "Surfshark" to activate',
+            "delay 1.5",
+            'tell application "System Events"',
+            'tell process "Surfshark"',
+            "set frontmost to true",
+            'keystroke "f" using command down',
+            "delay 0.3",
+            'keystroke "United States"',
+            "delay 0.4",
+            "key code 36",
+            "delay 0.5",
+            "end tell",
+            "end tell",
+        ]
+        completed = subprocess.run(
+            ["osascript", *sum([["-e", line] for line in script], [])],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        ok = completed.returncode == 0
+        self.log(
+            "surfshark_prepare_done",
+            message_id=message_id,
+            target="us_fastest",
+            returncode=str(completed.returncode),
+            ok=str(ok),
+            stderr=completed.stderr.strip(),
+        )
+        return ok
 
     def cancel_codex_task(self, message_id: str) -> int:
         status = self.read_codex_status()
@@ -527,10 +566,30 @@ def parse_worker_summary(stdout: str) -> dict[str, object]:
     return {}
 
 
-def live_codex_prompt_text(prompt: str) -> str:
+def prompt_requests_surfshark_us(prompt: str) -> bool:
+    text = prompt.lower()
+    wants_vpn = any(term in text for term in ["surfshark", "surf shark", "vpn"])
+    wants_us = any(term in text for term in ["usa", "u.s.", "us ", "united states", "america", "peacock"])
+    return wants_vpn and wants_us
+
+
+def live_codex_prompt_text(prompt: str, surfshark_prepared: bool = False) -> str:
+    surfshark_note = ""
+    if prompt_requests_surfshark_us(prompt):
+        if surfshark_prepared:
+            surfshark_note = (
+                "\n\nThe Mac helper already opened Surfshark and attempted to select/connect United States/Fastest before sending this prompt. "
+                "If Surfshark is still asking for login, confirmation, or a manual click, leave Surfshark visible and say what is needed."
+            )
+        else:
+            surfshark_note = (
+                "\n\nThe user requested Surfshark/USA VPN, but the Mac helper could not confirm it completed. "
+                "If Surfshark is visible and needs a manual click/login/confirmation, leave it visible and say what is needed before using Chrome."
+            )
     return (
         "User voice prompt: "
         + prompt
+        + surfshark_note
         + "\n\nWhen this is a Chrome, streaming, or video playback task, finish by leaving Google Chrome frontmost. "
         "If playback has started or a video player is visible, make the player fullscreen before ending. "
         "If fullscreen is blocked by a login, profile picker, region block, CAPTCHA, or other user-only prompt, leave that page visible in Chrome and say what is needed."

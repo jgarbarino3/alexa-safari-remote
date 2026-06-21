@@ -41,6 +41,7 @@ ensure_config_value "CODEX_TASK_TIMEOUT_SECONDS" "600"
 ensure_config_value "BROWSER_WORKER_PATH" "$HOME/.local/share/alexa-safari-remote/lib/chrome-worker.py"
 ensure_config_value "LIVE_CODEX_FOCUS_DELAY_SECONDS" "0.8"
 ensure_config_value "CODEX_NEW_CHAT_ON_OPEN" "1"
+ensure_config_value "SURFSHARK_PREPARE_ON_LIVE_PROMPT" "1"
 
 mkdir -p "$HOME/Library/LaunchAgents"
 
