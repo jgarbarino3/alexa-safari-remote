@@ -16,24 +16,15 @@ SQS actions:
 
 ## Voice Flow
 
-The custom skill invocation name remains:
-
 ```text
-tv remote
+Alexa, open Codex
+Alexa, ask Codex to open Chrome and go to Peacock
+Alexa, ask Codex for status
+Alexa, ask Codex to cancel
 ```
 
-Direct test phrases:
-
-```text
-Alexa, ask tv remote to open codex
-Alexa, ask tv remote to ask codex to summarize the repo status
-Alexa, ask tv remote to codex status
-Alexa, ask tv remote to cancel codex
-```
-
-For natural phrases such as `Alexa, open Codex`, create Alexa routines that map
-the short phrase to the custom skill phrase. Alexa custom skills do not receive
-arbitrary global speech unless Alexa routes the speech to the skill.
+The first command opens Codex Desktop and arms prompt intake for 10 minutes. The
+second command sends the spoken prompt to `codex exec`.
 
 ## Mac Agent Behavior
 

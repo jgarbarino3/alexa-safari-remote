@@ -192,8 +192,8 @@ alexa-skill/
 
 It includes:
 
-- an Alexa interaction model using invocation name `tv remote`
-- a Lambda handler that parses play/pause/seek commands
+- an Alexa interaction model using invocation name `codex`
+- a Lambda handler that parses play/pause/seek commands and Codex task commands
 - an AWS SQS bridge path for the no-rate-limit setup
 - the older HTTPS bridge contract: `POST { "action": "seek", "seconds": 754 }`
 
@@ -203,6 +203,22 @@ Important: Alexa custom skill code runs in the cloud. It cannot directly execute
 2. TRIGGERcmd API or bookmark URL
 3. a hosted relay that the Mac polls
 4. a secure tunnel or VPN endpoint
+
+For the AWS bridge setup, follow:
+
+The Codex voice shortcut path uses the custom skill directly:
+
+```text
+Alexa, open Codex
+Alexa, ask Codex to open Chrome and go to Peacock
+```
+
+The Codex bridge lets Alexa open/arm Codex on the TV Mac and then send one
+arbitrary prompt through Codex. For setup details, follow:
+
+```text
+docs/codex-voice-bridge.md
+```
 
 For the AWS bridge setup, follow:
 

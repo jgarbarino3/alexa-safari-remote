@@ -18,7 +18,9 @@ exports.handler = async (event) => {
   const request = event && event.request ? event.request : {};
 
   if (request.type === 'LaunchRequest') {
-    return response('TV remote is ready.');
+    const mediaAction = { action: 'open_codex' };
+    await sendToBridge(mediaAction);
+    return response('Opening Codex. Prompt intake is armed for ten minutes.');
   }
 
   if (request.type !== 'IntentRequest') {
