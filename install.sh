@@ -13,9 +13,10 @@ cp "$REPO_DIR/bin/safari-remote-sqs-agent" "$INSTALL_DIR/bin/safari-remote-sqs-a
 cp "$REPO_DIR/lib/safari-media-control.jxa.js" "$INSTALL_DIR/lib/safari-media-control.jxa.js"
 cp "$REPO_DIR/lib/prime-permissions.jxa.js" "$INSTALL_DIR/lib/prime-permissions.jxa.js"
 cp "$REPO_DIR/lib/aws-sqs-agent.py" "$INSTALL_DIR/lib/aws-sqs-agent.py"
+cp "$REPO_DIR/lib/chrome-worker.py" "$INSTALL_DIR/lib/chrome-worker.py"
 
 chmod +x "$INSTALL_DIR/bin/safari-remote" "$INSTALL_DIR/bin/prime-permissions" "$INSTALL_DIR/bin/safari-remote-sqs-agent"
-chmod +x "$INSTALL_DIR/lib/aws-sqs-agent.py"
+chmod +x "$INSTALL_DIR/lib/aws-sqs-agent.py" "$INSTALL_DIR/lib/chrome-worker.py"
 
 ln -sf "$INSTALL_DIR/bin/safari-remote" "$BIN_DIR/safari-remote"
 ln -sf "$INSTALL_DIR/bin/prime-permissions" "$BIN_DIR/safari-remote-prime-permissions"

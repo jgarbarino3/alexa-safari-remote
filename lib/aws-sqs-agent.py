@@ -20,7 +20,9 @@ DEFAULT_CONFIG = Path.home() / ".config" / "alexa-safari-remote" / "aws-bridge.e
 DEFAULT_LOG = Path.home() / ".local" / "state" / "alexa-safari-remote" / "aws-sqs-agent.log"
 DEFAULT_SAFARI_REMOTE = Path.home() / ".local" / "bin" / "safari-remote"
 DEFAULT_CODEX_STATE_DIR = Path.home() / ".local" / "state" / "alexa-safari-remote" / "codex"
-CODEX_ACTIONS = {"open_codex", "codex_task", "codex_status", "codex_cancel"}
+DEFAULT_BROWSER_WORKER = Path.home() / ".local" / "share" / "alexa-safari-remote" / "lib" / "chrome-worker.py"
+CODEX_ACTIONS = {"open_codex", "codex_task", "codex_status", "codex_cancel", "live_codex_prompt"}
+BROWSER_ACTIONS = {"browser_open", "browser_search", "browser_command", "browser_seek", "browser_status"}
 
 
 class AgentError(Exception):
@@ -58,6 +60,8 @@ class SqsAgent:
         self.codex_arm_seconds = int(config.get("CODEX_ARM_SECONDS", "600"))
         self.codex_task_timeout = int(config.get("CODEX_TASK_TIMEOUT_SECONDS", "600"))
         self.codex_state_dir = Path(config.get("CODEX_STATE_DIR", str(DEFAULT_CODEX_STATE_DIR))).expanduser()
+        self.browser_worker = Path(config.get("BROWSER_WORKER_PATH", str(DEFAULT_BROWSER_WORKER))).expanduser()
+        self.live_codex_delay = float(config.get("LIVE_CODEX_FOCUS_DELAY_SECONDS", "0.8"))
         self.codex_status_file = self.codex_state_dir / "status.json"
         self.codex_lock_file = self.codex_state_dir / "task.lock"
         self.codex_transcript_log = self.codex_state_dir / "transcripts.log"
@@ -95,6 +99,8 @@ class SqsAgent:
         try:
             if action_name in CODEX_ACTIONS:
                 returncode = self.handle_codex_action(media_action, message_id)
+            elif action_name in BROWSER_ACTIONS:
+                returncode = self.handle_browser_action(media_action, message_id)
             else:
                 argv = command_for_message(media_action, self.safari_remote)
                 returncode = self.run_safari_command(argv, message_id)
@@ -133,6 +139,8 @@ class SqsAgent:
             return self.open_codex(message_id)
         if action == "codex_task":
             return self.start_codex_task(str(message.get("prompt", "")).strip(), message_id)
+        if action == "live_codex_prompt":
+            return self.send_live_codex_prompt(str(message.get("prompt", "")).strip(), message_id)
         if action == "codex_status":
             return self.write_codex_status_event("status_requested", message_id)
         if action == "codex_cancel":
@@ -140,6 +148,32 @@ class SqsAgent:
 
         self.log("codex_action_error", message_id=message_id, action=action, error="unsupported_codex_action")
         return 2
+
+    def handle_browser_action(self, message: dict[str, object], message_id: str) -> int:
+        self.log("browser_action_start", message_id=message_id, action=normalized_action(message))
+        completed = subprocess.run(
+            [sys.executable, str(self.browser_worker), "--message", json.dumps(message)],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        summary = parse_worker_summary(completed.stdout)
+        fields = {
+            "message_id": message_id,
+            "action": normalized_action(message),
+            "returncode": str(completed.returncode),
+            "worker_event": str(summary.get("event", "")),
+            "worker_ok": str(summary.get("ok", "")),
+            "stderr": completed.stderr.strip(),
+        }
+        if summary.get("error"):
+            fields["error"] = str(summary["error"])
+        if summary.get("site"):
+            fields["site"] = str(summary["site"])
+        if summary.get("command"):
+            fields["command"] = str(summary["command"])
+        self.log("browser_action_done", **fields)
+        return completed.returncode
 
     def open_codex(self, message_id: str) -> int:
         if not self.codex_workspace.exists():
@@ -203,6 +237,48 @@ class SqsAgent:
             handle.write(f"{utc_now()} event=task_queued pid={process.pid} transcript={shell_word(str(transcript_path))}\n")
         self.log("codex_task_started", message_id=message_id, pid=str(process.pid), transcript=str(transcript_path))
         return 0
+
+    def send_live_codex_prompt(self, prompt: str, message_id: str) -> int:
+        if not prompt:
+            self.log("live_codex_rejected", message_id=message_id, reason="missing_prompt")
+            self.write_codex_status_event("live_prompt_rejected_missing_prompt", message_id)
+            return 2
+        if not self.codex_is_armed():
+            self.log("live_codex_rejected", message_id=message_id, reason="not_armed")
+            self.write_codex_status_event("live_prompt_rejected_not_armed", message_id)
+            return 3
+
+        script = [
+            'on run argv',
+            'set promptText to item 1 of argv',
+            'tell application "Codex" to activate',
+            f"delay {self.live_codex_delay}",
+            "set the clipboard to promptText",
+            'tell application "System Events"',
+            'keystroke "v" using command down',
+            "delay 0.1",
+            "key code 36",
+            "end tell",
+            "end run",
+        ]
+        completed = subprocess.run(
+            ["osascript", *sum([["-e", line] for line in script], []), prompt],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if completed.returncode == 0:
+            self.update_codex_status({"state": "live_prompt_sent", "last_prompt": prompt})
+            self.log("live_codex_prompt_sent", message_id=message_id, prompt_chars=str(len(prompt)))
+        else:
+            self.update_codex_status({"state": "live_prompt_error", "last_prompt": prompt})
+            self.log(
+                "live_codex_prompt_failed",
+                message_id=message_id,
+                returncode=str(completed.returncode),
+                stderr=completed.stderr.strip(),
+            )
+        return completed.returncode
 
     def cancel_codex_task(self, message_id: str) -> int:
         status = self.read_codex_status()
@@ -394,6 +470,17 @@ def run_aws_json(command: list[str]) -> dict[str, object]:
     if not completed.stdout.strip():
         return {}
     return json.loads(completed.stdout)
+
+
+def parse_worker_summary(stdout: str) -> dict[str, object]:
+    for line in reversed(stdout.splitlines()):
+        try:
+            parsed = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(parsed, dict):
+            return parsed
+    return {}
 
 
 def strip_quotes(value: str) -> str:

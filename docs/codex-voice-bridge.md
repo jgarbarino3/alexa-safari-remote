@@ -3,28 +3,52 @@
 This extends the existing Alexa custom skill and SQS Mac agent.
 
 ```text
-Alexa custom skill -> Lambda -> SQS -> Mac LaunchAgent -> codex app / codex exec
+Alexa custom skill -> Lambda -> SQS -> Mac LaunchAgent -> Chrome worker / Codex app / codex exec
 ```
 
-Safari media commands still use `safari-remote`. Codex commands use separate
-SQS actions:
+Safari media commands still use `safari-remote`. Browser and Codex commands use
+separate SQS actions:
 
 - `open_codex`
 - `codex_task`
+- `live_codex_prompt`
 - `codex_status`
 - `codex_cancel`
+- `browser_open`
+- `browser_search`
+- `browser_command`
+- `browser_seek`
+- `browser_status`
 
 ## Voice Flow
 
 ```text
 Alexa, open Codex
-Alexa, ask Codex to open Chrome and go to Peacock
+Alexa, ask Codex to open Peacock
+Alexa, ask Codex to search Disney for Andor
+Alexa, ask Codex to live Codex use Chrome and find my episode
 Alexa, ask Codex for status
 Alexa, ask Codex to cancel
 ```
 
 The first command opens Codex Desktop and arms prompt intake for 10 minutes. The
-second command sends the spoken prompt to `codex exec`.
+browser commands use the local Chrome worker when they match deterministic
+open/search/play/seek/fullscreen patterns. Explicit live Codex phrases paste the
+prompt into the open Codex app. Other prompts can still use `codex exec`.
+
+## Browser Worker
+
+The Chrome worker is the preferred path for TV/browser actions because it does
+not depend on background Codex MCP. It can:
+
+- open common streaming sites or arbitrary URLs in Chrome
+- open site search URLs for spoken queries
+- send common player keys such as play/pause, fullscreen, escape, and 10-second seek keypresses
+- report status in the local agent log
+
+Streaming sites can still block login, CAPTCHA, profile selection, region, or
+DRM/player-specific controls. In those cases, the worker logs a clear failure
+and the user can handle the visible prompt.
 
 ## Mac Agent Behavior
 
@@ -44,6 +68,16 @@ codex exec -C "$CODEX_WORKSPACE_PATH" "$prompt"
 
 The task runs in the background so the agent can still receive status and cancel
 messages. Only one Codex task runs at a time.
+
+`live_codex_prompt` runs:
+
+```text
+focus Codex.app -> paste prompt -> press Return
+```
+
+This is the path for more complicated interactive prompts where the live Codex
+app can use Chrome tools directly. It requires macOS Accessibility/Automation
+approval for the LaunchAgent process and/or terminal wrapper that triggers it.
 
 `codex_status` writes status to the agent log.
 
@@ -66,6 +100,8 @@ CODEX_WORKSPACE_PATH=<repo path>
 CODEX_CLI_PATH=<codex binary path>
 CODEX_ARM_SECONDS=600
 CODEX_TASK_TIMEOUT_SECONDS=600
+BROWSER_WORKER_PATH=<installed chrome-worker.py path>
+LIVE_CODEX_FOCUS_DELAY_SECONDS=0.8
 ```
 
 ## Logs
@@ -96,10 +132,17 @@ Per-task transcript files:
 
 ## Browser And Chrome Use
 
-Browser/Chrome Use belongs inside the Codex prompt execution, not inside this
-bridge. The bridge only hands the spoken prompt to `codex exec`. If the local
-Codex installation has Browser or Chrome plugins configured, Codex can use them
-according to its normal tool and approval behavior.
+The deterministic Chrome worker does not use Codex MCP. It runs local macOS
+commands so Alexa browser actions do not stall on interactive MCP recovery.
+
+Live Codex prompt injection is available for complicated browser prompts. That
+mode sends the prompt into Codex.app, where a live Codex session can use Chrome
+tools normally. It is more powerful, but it depends on UI focus and macOS
+Accessibility.
+
+`codex exec` remains useful for repo/local/background prompts, but it is not the
+preferred path for complex Chrome interaction because it cannot answer
+interactive browser-tool permission or recovery prompts.
 
 ## Surfshark
 

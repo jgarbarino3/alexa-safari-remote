@@ -148,6 +148,53 @@ class AgentProcessingTest(unittest.TestCase):
             )
             self.assertEqual(sqs_agent.handle_codex_action({"action": "codex_cancel"}, "message-4"), 0)
 
+    def test_browser_action_runs_worker_and_logs_summary(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            worker = root / "chrome-worker.py"
+            worker.write_text(
+                "#!/usr/bin/env python3\n"
+                "import json, sys\n"
+                "print(json.dumps({'ok': True, 'event': 'browser_opened', 'site': 'peacock'}))\n",
+                encoding="utf-8",
+            )
+            worker.chmod(0o755)
+
+            sqs_agent = agent.SqsAgent(
+                {
+                    "QUEUE_URL": "https://example.invalid/queue",
+                    "BROWSER_WORKER_PATH": str(worker),
+                    "CODEX_WORKSPACE_PATH": str(root),
+                    "CODEX_STATE_DIR": str(root / "state"),
+                    "AGENT_LOG_FILE": str(root / "agent.log"),
+                }
+            )
+
+            self.assertEqual(sqs_agent.handle_browser_action({"action": "browser_open", "site": "peacock"}, "message-5"), 0)
+            log_text = (root / "agent.log").read_text(encoding="utf-8")
+            self.assertIn("event=browser_action_done", log_text)
+            self.assertIn("worker_event=browser_opened", log_text)
+
+    def test_live_codex_prompt_requires_armed_state(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sqs_agent = agent.SqsAgent(
+                {
+                    "QUEUE_URL": "https://example.invalid/queue",
+                    "CODEX_WORKSPACE_PATH": str(root),
+                    "CODEX_STATE_DIR": str(root / "state"),
+                    "AGENT_LOG_FILE": str(root / "agent.log"),
+                }
+            )
+
+            self.assertEqual(
+                sqs_agent.handle_codex_action({"action": "live_codex_prompt", "prompt": "hello"}, "message-6"),
+                3,
+            )
+            log_text = (root / "agent.log").read_text(encoding="utf-8")
+            self.assertIn("event=live_codex_rejected", log_text)
+            self.assertIn("reason=not_armed", log_text)
+
 
 def wait_for_path(path: Path, timeout: float = 2.0) -> None:
     deadline = time.time() + timeout

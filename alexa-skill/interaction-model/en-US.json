@@ -120,6 +120,172 @@
           ]
         },
         {
+          "name": "CodexExecIntent",
+          "slots": [
+            {
+              "name": "prompt",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "run exec {prompt}",
+            "use exec for {prompt}",
+            "background task {prompt}"
+          ]
+        },
+        {
+          "name": "LiveCodexPromptIntent",
+          "slots": [
+            {
+              "name": "prompt",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "live codex {prompt}",
+            "tell live codex to {prompt}",
+            "ask live codex to {prompt}"
+          ]
+        },
+        {
+          "name": "OpenSiteIntent",
+          "slots": [
+            {
+              "name": "site",
+              "type": "SITE_NAME"
+            }
+          ],
+          "samples": [
+            "open {site}",
+            "launch {site}",
+            "go to {site}",
+            "open {site} website"
+          ]
+        },
+        {
+          "name": "SearchPeacockIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "search peacock for {query}",
+            "find {query} on peacock"
+          ]
+        },
+        {
+          "name": "SearchDisneyIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "search disney for {query}",
+            "search disney plus for {query}",
+            "find {query} on disney"
+          ]
+        },
+        {
+          "name": "SearchNetflixIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "search netflix for {query}",
+            "find {query} on netflix"
+          ]
+        },
+        {
+          "name": "SearchYoutubeIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "search youtube for {query}",
+            "search you tube for {query}",
+            "find {query} on youtube"
+          ]
+        },
+        {
+          "name": "SearchHuluIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "search hulu for {query}",
+            "find {query} on hulu"
+          ]
+        },
+        {
+          "name": "SearchPrimeIntent",
+          "slots": [
+            {
+              "name": "query",
+              "type": "AMAZON.SearchQuery"
+            }
+          ],
+          "samples": [
+            "search prime for {query}",
+            "search prime video for {query}",
+            "find {query} on prime"
+          ]
+        },
+        {
+          "name": "BrowserCommandIntent",
+          "slots": [
+            {
+              "name": "command",
+              "type": "BROWSER_COMMAND"
+            }
+          ],
+          "samples": [
+            "browser {command}",
+            "chrome {command}",
+            "{command}"
+          ]
+        },
+        {
+          "name": "BrowserSeekIntent",
+          "slots": [
+            {
+              "name": "direction",
+              "type": "SEEK_DIRECTION"
+            },
+            {
+              "name": "amount",
+              "type": "AMAZON.NUMBER"
+            },
+            {
+              "name": "unit",
+              "type": "SEEK_UNIT"
+            }
+          ],
+          "samples": [
+            "browser {direction} {amount} {unit}",
+            "chrome {direction} {amount} {unit}"
+          ]
+        },
+        {
+          "name": "BrowserStatusIntent",
+          "samples": [
+            "browser status",
+            "chrome status"
+          ]
+        },
+        {
           "name": "CodexStatusIntent",
           "samples": [
             "codex status",
@@ -163,6 +329,27 @@
           "values": [
             { "name": { "value": "seconds", "synonyms": ["second"] } },
             { "name": { "value": "minutes", "synonyms": ["minute"] } }
+          ]
+        },
+        {
+          "name": "SITE_NAME",
+          "values": [
+            { "name": { "value": "peacock", "synonyms": ["peacock tv"] } },
+            { "name": { "value": "disney plus", "synonyms": ["disney"] } },
+            { "name": { "value": "netflix" } },
+            { "name": { "value": "youtube", "synonyms": ["you tube"] } },
+            { "name": { "value": "hulu" } },
+            { "name": { "value": "prime video", "synonyms": ["prime"] } }
+          ]
+        },
+        {
+          "name": "BROWSER_COMMAND",
+          "values": [
+            { "name": { "value": "play" } },
+            { "name": { "value": "pause" } },
+            { "name": { "value": "toggle", "synonyms": ["play pause"] } },
+            { "name": { "value": "fullscreen" } },
+            { "name": { "value": "escape", "synonyms": ["exit fullscreen"] } }
           ]
         }
       ]

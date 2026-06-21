@@ -12,6 +12,16 @@ const ACTION_BY_INTENT = {
   OpenCodexIntent: { action: 'open_codex' },
   CodexStatusIntent: { action: 'codex_status' },
   CancelCodexIntent: { action: 'codex_cancel' },
+  BrowserStatusIntent: { action: 'browser_status' },
+};
+
+const SITE_BY_SEARCH_INTENT = {
+  SearchPeacockIntent: 'peacock',
+  SearchDisneyIntent: 'disney',
+  SearchNetflixIntent: 'netflix',
+  SearchYoutubeIntent: 'youtube',
+  SearchHuluIntent: 'hulu',
+  SearchPrimeIntent: 'prime video',
 };
 
 exports.handler = async (event) => {
@@ -56,6 +66,51 @@ function buildMediaAction(intent) {
   if (intentName === 'AskCodexIntent') {
     const prompt = slotValue(intent, 'prompt');
     if (!prompt) return null;
+    return actionFromCodexPrompt(prompt);
+  }
+
+  if (intentName === 'LiveCodexPromptIntent') {
+    const prompt = slotValue(intent, 'prompt');
+    if (!prompt) return null;
+    return { action: 'live_codex_prompt', prompt };
+  }
+
+  if (intentName === 'OpenSiteIntent') {
+    const site = slotValue(intent, 'site');
+    if (!site) return null;
+    return { action: 'browser_open', site };
+  }
+
+  if (intentName === 'SearchSiteIntent') {
+    const site = slotValue(intent, 'site');
+    const query = slotValue(intent, 'query');
+    if (!site || !query) return null;
+    return { action: 'browser_search', site, query };
+  }
+
+  if (SITE_BY_SEARCH_INTENT[intentName]) {
+    const query = slotValue(intent, 'query');
+    if (!query) return null;
+    return { action: 'browser_search', site: SITE_BY_SEARCH_INTENT[intentName], query };
+  }
+
+  if (intentName === 'BrowserCommandIntent') {
+    const command = slotValue(intent, 'command');
+    if (!command) return null;
+    return actionFromBrowserCommand(command);
+  }
+
+  if (intentName === 'BrowserSeekIntent') {
+    const direction = slotValue(intent, 'direction');
+    const amount = positiveNumber(slotValue(intent, 'amount')) || 10;
+    const unit = slotValue(intent, 'unit') || 'seconds';
+    const seconds = unit.startsWith('minute') ? amount * 60 : amount;
+    return { action: 'browser_seek', seconds: ['back', 'rewind'].includes(direction) ? -seconds : seconds };
+  }
+
+  if (intentName === 'CodexExecIntent') {
+    const prompt = slotValue(intent, 'prompt');
+    if (!prompt) return null;
     return { action: 'codex_task', prompt };
   }
 
@@ -75,6 +130,47 @@ function buildMediaAction(intent) {
     return { action: 'seek', seconds: hours * 3600 + minutes * 60 + seconds };
   }
 
+  return null;
+}
+
+function actionFromCodexPrompt(prompt) {
+  const cleanPrompt = String(prompt || '').trim().toLowerCase();
+
+  for (const prefix of ['live codex ', 'tell live codex to ', 'ask live codex to ']) {
+    if (cleanPrompt.startsWith(prefix)) {
+      return { action: 'live_codex_prompt', prompt: cleanPrompt.slice(prefix.length).trim() };
+    }
+  }
+
+  const searchMatch = cleanPrompt.match(/^(?:search|find) (peacock|peacock tv|disney|disney plus|netflix|youtube|you tube|hulu|prime|prime video) (?:for )?(.+)$/);
+  if (searchMatch) {
+    return { action: 'browser_search', site: searchMatch[1], query: searchMatch[2] };
+  }
+
+  const openMatch = cleanPrompt.match(/^(?:open|launch|go to) (peacock|peacock tv|disney|disney plus|netflix|youtube|you tube|hulu|prime|prime video|[a-z0-9.-]+\.[a-z]{2,})(?: website| app| site)?$/);
+  if (openMatch) {
+    return { action: 'browser_open', site: openMatch[1] };
+  }
+
+  const seekMatch = cleanPrompt.match(/^(?:seek|skip|forward|go forward|rewind|back|go back) (?:to |by )?(\d+) ?(seconds?|minutes?)?$/);
+  if (seekMatch) {
+    const amount = Number(seekMatch[1]);
+    const unit = seekMatch[2] || 'seconds';
+    const direction = cleanPrompt.includes('rewind') || cleanPrompt.includes('back') ? -1 : 1;
+    return { action: 'browser_seek', seconds: direction * (unit.startsWith('minute') ? amount * 60 : amount) };
+  }
+
+  const commandAction = actionFromBrowserCommand(cleanPrompt);
+  if (commandAction) return commandAction;
+
+  return { action: 'codex_task', prompt: cleanPrompt };
+}
+
+function actionFromBrowserCommand(command) {
+  const cleanCommand = String(command || '').trim().toLowerCase();
+  if (['play', 'pause', 'toggle', 'play pause', 'fullscreen', 'escape'].includes(cleanCommand)) {
+    return { action: 'browser_command', command: cleanCommand };
+  }
   return null;
 }
 
@@ -147,8 +243,14 @@ function spokenConfirmation(mediaAction) {
   if (mediaAction.action === 'escape') return 'Exiting fullscreen.';
   if (mediaAction.action === 'open_codex') return 'Opening Codex. Prompt intake is armed for ten minutes.';
   if (mediaAction.action === 'codex_task') return 'Sent to Codex.';
+  if (mediaAction.action === 'live_codex_prompt') return 'Sent to live Codex.';
   if (mediaAction.action === 'codex_status') return 'Checking Codex status.';
   if (mediaAction.action === 'codex_cancel') return 'Cancelling Codex.';
+  if (mediaAction.action === 'browser_open') return `Opening ${mediaAction.site}.`;
+  if (mediaAction.action === 'browser_search') return `Searching ${mediaAction.site}.`;
+  if (mediaAction.action === 'browser_command') return `${mediaAction.command}.`;
+  if (mediaAction.action === 'browser_seek') return `Seeking ${mediaAction.seconds} seconds.`;
+  if (mediaAction.action === 'browser_status') return 'Checking browser status.';
   return `${mediaAction.action}.`;
 }
 

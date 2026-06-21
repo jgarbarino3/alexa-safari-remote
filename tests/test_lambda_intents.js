@@ -63,6 +63,57 @@ async function invoke(intent) {
   }
 
   {
+    const { result, calls } = await invoke({
+      name: 'AskCodexIntent',
+      slots: { prompt: { value: 'open Peacock' } },
+    });
+    assert.deepStrictEqual(calls[0], { action: 'browser_open', site: 'peacock' });
+    assert.strictEqual(result.response.outputSpeech.text, 'Opening peacock.');
+  }
+
+  {
+    const { result, calls } = await invoke({
+      name: 'AskCodexIntent',
+      slots: { prompt: { value: 'search Disney for Andor' } },
+    });
+    assert.deepStrictEqual(calls[0], { action: 'browser_search', site: 'disney', query: 'andor' });
+    assert.strictEqual(result.response.outputSpeech.text, 'Searching disney.');
+  }
+
+  {
+    const { result, calls } = await invoke({
+      name: 'SearchYoutubeIntent',
+      slots: { query: { value: 'fireplace' } },
+    });
+    assert.deepStrictEqual(calls[0], { action: 'browser_search', site: 'youtube', query: 'fireplace' });
+    assert.strictEqual(result.response.outputSpeech.text, 'Searching youtube.');
+  }
+
+  {
+    const { result, calls } = await invoke({
+      name: 'LiveCodexPromptIntent',
+      slots: { prompt: { value: 'use chrome and find my episode' } },
+    });
+    assert.deepStrictEqual(calls[0], {
+      action: 'live_codex_prompt',
+      prompt: 'use chrome and find my episode',
+    });
+    assert.strictEqual(result.response.outputSpeech.text, 'Sent to live Codex.');
+  }
+
+  {
+    const { result, calls } = await invoke({
+      name: 'CodexExecIntent',
+      slots: { prompt: { value: 'summarize repo status' } },
+    });
+    assert.deepStrictEqual(calls[0], {
+      action: 'codex_task',
+      prompt: 'summarize repo status',
+    });
+    assert.strictEqual(result.response.outputSpeech.text, 'Sent to Codex.');
+  }
+
+  {
     const { result, calls } = await invoke({ name: 'CodexStatusIntent', slots: {} });
     assert.deepStrictEqual(calls[0], { action: 'codex_status' });
     assert.strictEqual(result.response.outputSpeech.text, 'Checking Codex status.');
