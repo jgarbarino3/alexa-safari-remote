@@ -201,6 +201,12 @@ async function invokeWithSession(intent, attributes) {
   }
 
   {
+    const { result, calls } = await invoke({ name: 'LoveIslandIntent', slots: {} });
+    assert.deepStrictEqual(calls[0], { action: 'love_island' });
+    assert.strictEqual(result.response.outputSpeech.text, 'Starting Love Island.');
+  }
+
+  {
     const { result, calls } = await invoke({
       name: 'AskCodexIntent',
       slots: { prompt: { value: 'disconnect VPN' } },
@@ -216,6 +222,15 @@ async function invokeWithSession(intent, attributes) {
     });
     assert.deepStrictEqual(calls[0], { action: 'surfshark_connect_us' });
     assert.strictEqual(result.response.outputSpeech.text, 'Connecting Surfshark.');
+  }
+
+  {
+    const { result, calls } = await invoke({
+      name: 'AskCodexIntent',
+      slots: { prompt: { value: 'love island' } },
+    });
+    assert.deepStrictEqual(calls[0], { action: 'love_island' });
+    assert.strictEqual(result.response.outputSpeech.text, 'Starting Love Island.');
   }
 })().catch((error) => {
   console.error(error);

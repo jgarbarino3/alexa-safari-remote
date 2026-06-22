@@ -17,6 +17,7 @@ separate SQS actions:
 - `codex_quit`
 - `surfshark_connect_us`
 - `surfshark_disconnect`
+- `love_island`
 - `browser_open`
 - `browser_search`
 - `browser_command`
@@ -32,6 +33,7 @@ Alexa, ask Codex to search Disney for Andor
 Alexa, ask Codex to live Codex use Chrome and find my episode
 Alexa, ask Codex to disconnect VPN
 Alexa, ask Codex to refresh VPN
+Alexa, ask Codex to love island
 Alexa, ask Codex for status
 Alexa, ask Codex to cancel
 Alexa, ask Codex to close Codex
@@ -85,6 +87,35 @@ The `723,501` coordinate is a macOS point coordinate, not a Retina screenshot
 pixel coordinate. It clicks the visible Quick-connect button. Surfshark then
 connects to whatever Quick-connect currently chooses internally, so keep United
 States Fastest as the first/preferred Quick-connect target for Peacock.
+Keep the Surfshark window in its normal top/Quick-connect view; if the locations
+list is scrolled so that another country sits under the click point, the helper
+can select that visible row instead.
+
+## Love Island Routine
+
+For the shortest phrase, create an Alexa Routine in the mobile app:
+
+```text
+When: Alexa, love island
+Alexa will: Custom -> ask Codex to love island
+```
+
+The custom skill can also be invoked directly with:
+
+```text
+Alexa, ask Codex to love island
+```
+
+That sends `love_island` to the Mac agent. The agent clicks Surfshark
+Quick-connect for USA Fastest, opens Peacock in Chrome,
+opens/arms Codex, then sends a live prompt telling Codex to use Peacock's
+visible Continue Watching/search/episode UI, choose the Peacock profile named
+Lillia if a profile picker appears, avoid browser history, start the episode,
+select the actual playback tab, use Chrome presentation fullscreen with
+Command+Shift+F, and do a final real macOS screenshot check that Chrome, not
+Codex, is frontmost and the Chrome tabs/address bar are gone. If Peacock shows
+a login, region block, CAPTCHA, or another user-only blocker, Codex should leave
+that blocker visible in Chrome.
 
 ## Browser Worker
 
@@ -169,6 +200,7 @@ CODEX_NEW_CHAT_ON_OPEN=1
 SURFSHARK_PREPARE_ON_LIVE_PROMPT=1
 SURFSHARK_SEARCH_POINT=325,130
 SURFSHARK_QUICK_CONNECT_POINT=723,501
+SURFSHARK_CONNECT_SETTLE_SECONDS=3.0
 CLICK_TOOL_PATH=/usr/local/bin/cliclick
 ```
 

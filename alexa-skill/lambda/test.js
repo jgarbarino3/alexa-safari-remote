@@ -10,6 +10,7 @@ async function main() {
   await testCodexPromptPayload();
   await testBrowserPromptPayload();
   await testLiveCodexPayload();
+  await testLoveIslandPayload();
   console.log('OK:lambda-tests');
 }
 
@@ -187,6 +188,45 @@ async function testLiveCodexPayload() {
 
     assert.strictEqual(result.response.outputSpeech.text, 'Sent to live Codex.');
     assert.deepStrictEqual(receivedBodies, [{ action: 'live_codex_prompt', prompt: 'use chrome and find peacock' }]);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    delete process.env.REMOTE_ENDPOINT_URL;
+  }
+}
+
+async function testLoveIslandPayload() {
+  delete process.env.ALEXA_SAFARI_REMOTE_QUEUE_URL;
+
+  const receivedBodies = [];
+  const server = http.createServer((request, response) => {
+    let body = '';
+    request.on('data', (chunk) => {
+      body += chunk;
+    });
+    request.on('end', () => {
+      receivedBodies.push(JSON.parse(body));
+      response.writeHead(204);
+      response.end();
+    });
+  });
+
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  process.env.REMOTE_ENDPOINT_URL = `http://127.0.0.1:${address.port}/command`;
+
+  try {
+    const result = await handler({
+      request: {
+        type: 'IntentRequest',
+        intent: {
+          name: 'LoveIslandIntent',
+          slots: {},
+        },
+      },
+    });
+
+    assert.strictEqual(result.response.outputSpeech.text, 'Starting Love Island.');
+    assert.deepStrictEqual(receivedBodies, [{ action: 'love_island' }]);
   } finally {
     await new Promise((resolve) => server.close(resolve));
     delete process.env.REMOTE_ENDPOINT_URL;

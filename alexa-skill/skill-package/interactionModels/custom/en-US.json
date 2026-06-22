@@ -315,6 +315,15 @@
           ]
         },
         {
+          "name": "LoveIslandIntent",
+          "samples": [
+            "love island",
+            "watch love island",
+            "play love island",
+            "open love island"
+          ]
+        },
+        {
           "name": "CodexStatusIntent",
           "samples": [
             "codex status",

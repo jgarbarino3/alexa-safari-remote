@@ -16,6 +16,7 @@ const ACTION_BY_INTENT = {
   BrowserStatusIntent: { action: 'browser_status' },
   SurfsharkDisconnectIntent: { action: 'surfshark_disconnect' },
   SurfsharkConnectIntent: { action: 'surfshark_connect_us' },
+  LoveIslandIntent: { action: 'love_island' },
 };
 
 const SITE_BY_SEARCH_INTENT = {
@@ -165,6 +166,10 @@ function actionFromCodexPrompt(prompt) {
     return { action: 'open_codex' };
   }
 
+  if (/^(?:love island|watch love island|play love island|open love island)$/.test(cleanPrompt)) {
+    return { action: 'love_island' };
+  }
+
   if (['quit codex', 'close codex', 'shut down codex', 'close the codex app', 'quit the codex app'].includes(cleanPrompt)) {
     return { action: 'codex_quit' };
   }
@@ -284,6 +289,7 @@ function spokenConfirmation(mediaAction) {
   if (mediaAction.action === 'codex_quit') return 'Closing Codex.';
   if (mediaAction.action === 'surfshark_disconnect') return 'Disconnecting Surfshark.';
   if (mediaAction.action === 'surfshark_connect_us') return 'Connecting Surfshark.';
+  if (mediaAction.action === 'love_island') return 'Starting Love Island.';
   if (mediaAction.action === 'browser_open') return `Opening ${mediaAction.site}.`;
   if (mediaAction.action === 'browser_search') return `Searching ${mediaAction.site}.`;
   if (mediaAction.action === 'browser_command') return `${mediaAction.command}.`;

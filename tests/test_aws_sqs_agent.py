@@ -211,6 +211,7 @@ class AgentProcessingTest(unittest.TestCase):
                             "CODEX_STATE_DIR": str(root / "state"),
                             "AGENT_LOG_FILE": str(root / "agent.log"),
                             "CLICK_TOOL_PATH": "/tmp/cliclick",
+                            "SURFSHARK_CONNECT_SETTLE_SECONDS": "0",
                         }
                     )
                     self.clicked = False
@@ -247,12 +248,76 @@ class AgentProcessingTest(unittest.TestCase):
             self.assertIn("event=live_codex_rejected", log_text)
             self.assertIn("reason=not_armed", log_text)
 
+    def test_love_island_macro_runs_phases_and_injects_prompt(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            class FakeAgent(agent.SqsAgent):
+                def __init__(self):
+                    super().__init__(
+                        {
+                            "QUEUE_URL": "https://example.invalid/queue",
+                            "CODEX_WORKSPACE_PATH": str(root),
+                            "CODEX_STATE_DIR": str(root / "state"),
+                            "AGENT_LOG_FILE": str(root / "agent.log"),
+                            "CLICK_TOOL_PATH": "/tmp/cliclick",
+                        }
+                    )
+                    self.prompt = ""
+
+                def quick_connect_surfshark(self):
+                    return agent.subprocess.CompletedProcess(["cliclick"], 0, "", "")
+
+                def handle_browser_action(self, message, message_id):
+                    self.log("browser_action_done", message_id=message_id, action=message["action"], worker_event="browser_search_opened", worker_ok="True")
+                    return 0
+
+                def open_codex(self, message_id):
+                    self.update_codex_status({"state": "armed", "armed_until": int(time.time()) + 600})
+                    self.log("codex_opened", message_id=message_id, new_chat="True")
+                    return 0
+
+                def inject_live_codex_prompt(self, live_prompt, prompt, message_id):
+                    self.prompt = live_prompt
+                    self.log("live_codex_prompt_sent", message_id=message_id, prompt_chars=str(len(prompt)))
+                    return 0
+
+            sqs_agent = FakeAgent()
+            self.assertEqual(sqs_agent.handle_macro_action({"action": "love_island"}, "message-love"), 0)
+            self.assertIn("Do not open browser history", sqs_agent.prompt)
+            self.assertIn("profile named Lillia", sqs_agent.prompt)
+            self.assertIn("Continue Watching", sqs_agent.prompt)
+            self.assertIn("Google Chrome, not Codex", sqs_agent.prompt)
+            self.assertIn("Command+Shift+F", sqs_agent.prompt)
+            self.assertIn("real macOS screencapture", sqs_agent.prompt)
+            self.assertIn("tabs/address bar should be gone", sqs_agent.prompt)
+            self.assertIn("final visual/state check", sqs_agent.prompt)
+            log_text = (root / "agent.log").read_text(encoding="utf-8")
+            for phase in ["vpn_start", "vpn_done", "peacock_opened", "fullscreen_check_requested", "codex_prompt_sent"]:
+                self.assertIn(f"phase={phase}", log_text)
+            self.assertIn("event=love_island_done", log_text)
+            self.assertIn("ok=True", log_text)
+
     def test_live_codex_prompt_text_requests_chrome_fullscreen_finish(self):
         prompt = agent.live_codex_prompt_text("open peacock and play the last episode")
         self.assertIn("User voice prompt: open peacock and play the last episode", prompt)
         self.assertIn("leaving Google Chrome frontmost", prompt)
         self.assertIn("make the player fullscreen", prompt)
         self.assertIn("Do not open browser history", prompt)
+        self.assertIn("final visual/state check", prompt)
+
+    def test_love_island_prompt_text_sets_peacock_rules(self):
+        prompt = agent.love_island_live_prompt_text(vpn_ok=True, peacock_opened=True)
+        self.assertIn("Surfshark USA Fastest", prompt)
+        self.assertIn("Peacock in Chrome", prompt)
+        self.assertIn("Peacock Not Found", prompt)
+        self.assertIn("Do not open browser history", prompt)
+        self.assertIn("profile named Lillia", prompt)
+        self.assertIn("Continue Watching", prompt)
+        self.assertIn("Google Chrome, not Codex", prompt)
+        self.assertIn("Command+Shift+F", prompt)
+        self.assertIn("real macOS screencapture", prompt)
+        self.assertIn("tabs/address bar should be gone", prompt)
         self.assertIn("final visual/state check", prompt)
 
     def test_live_codex_prompt_text_mentions_surfshark_prepare(self):

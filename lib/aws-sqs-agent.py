@@ -24,6 +24,7 @@ DEFAULT_BROWSER_WORKER = Path.home() / ".local" / "share" / "alexa-safari-remote
 CODEX_ACTIONS = {"open_codex", "codex_task", "codex_status", "codex_cancel", "codex_quit", "live_codex_prompt"}
 BROWSER_ACTIONS = {"browser_open", "browser_search", "browser_command", "browser_seek", "browser_status"}
 SURFSHARK_ACTIONS = {"surfshark_disconnect", "surfshark_connect_us"}
+MACRO_ACTIONS = {"love_island"}
 
 
 class AgentError(Exception):
@@ -67,6 +68,7 @@ class SqsAgent:
         self.surfshark_prepare_on_live_prompt = config.get("SURFSHARK_PREPARE_ON_LIVE_PROMPT", "1").strip().lower() not in {"0", "false", "no"}
         self.surfshark_search_point = parse_point(config.get("SURFSHARK_SEARCH_POINT", "325,130"))
         self.surfshark_quick_connect_point = parse_point(config.get("SURFSHARK_QUICK_CONNECT_POINT", "723,501"))
+        self.surfshark_connect_settle_seconds = float(config.get("SURFSHARK_CONNECT_SETTLE_SECONDS", "3.0"))
         self.click_tool_path = config.get("CLICK_TOOL_PATH") or shutil.which("cliclick") or ""
         self.codex_status_file = self.codex_state_dir / "status.json"
         self.codex_lock_file = self.codex_state_dir / "task.lock"
@@ -109,6 +111,8 @@ class SqsAgent:
                 returncode = self.handle_browser_action(media_action, message_id)
             elif action_name in SURFSHARK_ACTIONS:
                 returncode = self.handle_surfshark_action(media_action, message_id)
+            elif action_name in MACRO_ACTIONS:
+                returncode = self.handle_macro_action(media_action, message_id)
             else:
                 argv = command_for_message(media_action, self.safari_remote)
                 returncode = self.run_safari_command(argv, message_id)
@@ -208,6 +212,62 @@ class SqsAgent:
             fields["command"] = str(summary["command"])
         self.log("browser_action_done", **fields)
         return completed.returncode
+
+    def handle_macro_action(self, message: dict[str, object], message_id: str) -> int:
+        action = normalized_action(message)
+        if action != "love_island":
+            self.log("macro_action_error", message_id=message_id, action=action, error="unsupported_macro_action")
+            return 2
+        return self.run_love_island_macro(message_id)
+
+    def run_love_island_macro(self, message_id: str) -> int:
+        self.log("love_island_start", message_id=message_id)
+
+        self.log("love_island_phase", message_id=message_id, phase="vpn_start")
+        vpn_ok = False
+        if self.click_tool_path:
+            vpn_completed = self.quick_connect_surfshark()
+            vpn_ok = vpn_completed.returncode == 0
+            self.log(
+                "love_island_phase",
+                message_id=message_id,
+                phase="vpn_done",
+                returncode=str(vpn_completed.returncode),
+                ok=str(vpn_ok),
+                stderr=vpn_completed.stderr.strip(),
+            )
+        else:
+            self.log("love_island_phase", message_id=message_id, phase="vpn_done", returncode="2", ok="False", stderr="missing_click_tool")
+
+        if vpn_ok and self.surfshark_connect_settle_seconds > 0:
+            time.sleep(self.surfshark_connect_settle_seconds)
+
+        self.log("love_island_phase", message_id=message_id, phase="peacock_open_start")
+        peacock_returncode = self.handle_browser_action(
+            {"action": "browser_open", "site": "peacock"},
+            message_id,
+        )
+        peacock_ok = peacock_returncode == 0
+        self.log(
+            "love_island_phase",
+            message_id=message_id,
+            phase="peacock_opened",
+            returncode=str(peacock_returncode),
+            ok=str(peacock_ok),
+        )
+
+        open_returncode = self.open_codex(message_id)
+        if open_returncode != 0:
+            self.log("love_island_done", message_id=message_id, returncode=str(open_returncode), ok="False", failed_phase="open_codex")
+            return open_returncode
+
+        self.log("love_island_phase", message_id=message_id, phase="fullscreen_check_requested")
+        live_prompt = love_island_live_prompt_text(vpn_ok=vpn_ok, peacock_opened=peacock_ok)
+        prompt_returncode = self.inject_live_codex_prompt(live_prompt, "love island", message_id)
+        prompt_ok = prompt_returncode == 0
+        self.log("love_island_phase", message_id=message_id, phase="codex_prompt_sent", returncode=str(prompt_returncode), ok=str(prompt_ok))
+        self.log("love_island_done", message_id=message_id, returncode=str(prompt_returncode), ok=str(prompt_ok))
+        return prompt_returncode
 
     def open_codex(self, message_id: str) -> int:
         if not self.codex_workspace.exists():
@@ -317,6 +377,9 @@ class SqsAgent:
             surfshark_prepared = self.prepare_surfshark_country(message_id, surfshark_country)
 
         live_prompt = live_codex_prompt_text(prompt, surfshark_country=surfshark_country, surfshark_prepared=surfshark_prepared)
+        return self.inject_live_codex_prompt(live_prompt, prompt, message_id)
+
+    def inject_live_codex_prompt(self, live_prompt: str, prompt: str, message_id: str) -> int:
         script = [
             'on run argv',
             'set promptText to item 1 of argv',
@@ -740,6 +803,35 @@ def live_codex_prompt_text(prompt: str, surfshark_country: str = "", surfshark_p
         "If playback has started or a video player is visible, make the player fullscreen before ending. "
         "Before ending, do one final visual/state check that Chrome is frontmost, the intended video page is visible, and the player is actually fullscreen; if the fullscreen click missed, retry once and check again. "
         "If fullscreen is blocked by a login, profile picker, region block, CAPTCHA, or other user-only prompt, leave that page visible in Chrome and say what is needed."
+    )
+
+
+def love_island_live_prompt_text(vpn_ok: bool = False, peacock_opened: bool = False) -> str:
+    vpn_note = (
+        "The Mac helper already attempted Surfshark USA Fastest before sending this prompt."
+        if vpn_ok
+        else "The Mac helper attempted Surfshark USA Fastest but could not confirm the local click succeeded."
+    )
+    peacock_note = (
+        "The Mac helper already opened Peacock in Chrome."
+        if peacock_opened
+        else "The Mac helper could not confirm Peacock opened, so open Peacock in Chrome yourself."
+    )
+    return (
+        "User voice prompt: love island\n\n"
+        + vpn_note
+        + " "
+        + peacock_note
+        + "\n\nUse Google Chrome and Peacock's visible UI only. Do not open browser history or other protected local browser data. "
+        "If Peacock shows a profile picker, choose the profile named Lillia. "
+        "If Chrome is on a Peacock Not Found or broken search page, first open https://www.peacocktv.com/ in Chrome. "
+        "Find Love Island using Peacock's visible home/search UI, defaulting to Love Island USA if Peacock offers multiple versions. "
+        "Use Peacock's visible Continue Watching, watch-progress, search results, and episode pages to resume the episode the user was watching. "
+        "If the exact episode cannot be determined without an approval prompt, choose the most likely Continue Watching item; if none exists, leave the Love Island page visible and say what is needed. "
+        "Start playback, make the playback tab the selected/front tab, activate Google Chrome, then use Chrome presentation fullscreen with Command+Shift+F; this worked better than Peacock's own fullscreen HUD. "
+        "Verify fullscreen with a real macOS screencapture, not only a browser viewport screenshot; DRM may make the video area black, but Chrome tabs/address bar should be gone. "
+        "Before ending, do one final visual/state check that Google Chrome, not Codex, is the frontmost app; the selected tab is the actual Love Island playback URL, not a search/profile/error tab; Love Island is visible or playing; and Chrome tabs/address bar are gone. "
+        "If fullscreen missed or Codex is still frontmost, switch back to Chrome, send Command+Shift+F once more, and check again. If login, region block, CAPTCHA, or another user-only blocker appears, leave that blocker visible in Chrome and say what is needed."
     )
 
 
