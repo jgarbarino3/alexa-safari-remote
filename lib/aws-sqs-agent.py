@@ -69,7 +69,7 @@ class SqsAgent:
         self.surfshark_search_point = parse_point(config.get("SURFSHARK_SEARCH_POINT", "325,130"))
         self.surfshark_quick_connect_point = parse_point(config.get("SURFSHARK_QUICK_CONNECT_POINT", "723,501"))
         self.surfshark_quick_connect_relative_point = parse_optional_point(config.get("SURFSHARK_QUICK_CONNECT_RELATIVE_POINT", ""))
-        self.surfshark_connect_settle_seconds = float(config.get("SURFSHARK_CONNECT_SETTLE_SECONDS", "3.0"))
+        self.surfshark_connect_settle_seconds = float(config.get("SURFSHARK_CONNECT_SETTLE_SECONDS", "12.0"))
         self.click_tool_path = config.get("CLICK_TOOL_PATH") or shutil.which("cliclick") or ""
         self.codex_status_file = self.codex_state_dir / "status.json"
         self.codex_lock_file = self.codex_state_dir / "task.lock"

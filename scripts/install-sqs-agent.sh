@@ -57,7 +57,8 @@ ensure_config_value "SURFSHARK_QUICK_CONNECT_POINT" "723,501"
 ensure_config_value "SURFSHARK_QUICK_CONNECT_RELATIVE_POINT" "704,540"
 replace_config_value_if_exact "SURFSHARK_QUICK_CONNECT_RELATIVE_POINT" "" "704,540"
 replace_config_value_if_exact "SURFSHARK_QUICK_CONNECT_POINT" "1220,1065" "723,501"
-ensure_config_value "SURFSHARK_CONNECT_SETTLE_SECONDS" "3.0"
+ensure_config_value "SURFSHARK_CONNECT_SETTLE_SECONDS" "12.0"
+replace_config_value_if_exact "SURFSHARK_CONNECT_SETTLE_SECONDS" "3.0" "12.0"
 if command -v cliclick >/dev/null 2>&1; then
   ensure_config_value "CLICK_TOOL_PATH" "$(command -v cliclick)"
 fi
