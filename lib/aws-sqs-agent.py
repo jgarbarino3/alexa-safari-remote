@@ -68,6 +68,7 @@ class SqsAgent:
         self.surfshark_prepare_on_live_prompt = config.get("SURFSHARK_PREPARE_ON_LIVE_PROMPT", "1").strip().lower() not in {"0", "false", "no"}
         self.surfshark_search_point = parse_point(config.get("SURFSHARK_SEARCH_POINT", "325,130"))
         self.surfshark_quick_connect_point = parse_point(config.get("SURFSHARK_QUICK_CONNECT_POINT", "723,501"))
+        self.surfshark_quick_connect_relative_point = parse_optional_point(config.get("SURFSHARK_QUICK_CONNECT_RELATIVE_POINT", ""))
         self.surfshark_connect_settle_seconds = float(config.get("SURFSHARK_CONNECT_SETTLE_SECONDS", "3.0"))
         self.click_tool_path = config.get("CLICK_TOOL_PATH") or shutil.which("cliclick") or ""
         self.codex_status_file = self.codex_state_dir / "status.json"
@@ -435,10 +436,13 @@ class SqsAgent:
         return ok
 
     def quick_connect_surfshark(self) -> subprocess.CompletedProcess[str]:
-        connect_x, connect_y = self.surfshark_quick_connect_point
         completed = self.activate_surfshark()
         if completed.returncode != 0:
             return completed
+        completed = self.press_surfshark_quick_connect_button()
+        if completed.returncode == 0:
+            return completed
+        connect_x, connect_y = self.resolve_surfshark_quick_connect_point()
         return subprocess.run(
             [self.click_tool_path, f"c:{connect_x},{connect_y}"],
             text=True,
@@ -448,7 +452,6 @@ class SqsAgent:
 
     def search_and_connect_surfshark(self, country: str) -> subprocess.CompletedProcess[str]:
         search_x, search_y = self.surfshark_search_point
-        connect_x, connect_y = self.surfshark_quick_connect_point
         completed = self.activate_surfshark()
         if completed.returncode != 0:
             return completed
@@ -479,6 +482,7 @@ class SqsAgent:
         )
         if completed.returncode != 0:
             return completed
+        connect_x, connect_y = self.resolve_surfshark_quick_connect_point()
         return subprocess.run(
             [self.click_tool_path, f"c:{connect_x},{connect_y}"],
             text=True,
@@ -500,6 +504,64 @@ class SqsAgent:
             capture_output=True,
             check=False,
         )
+
+    def press_surfshark_quick_connect_button(self) -> subprocess.CompletedProcess[str]:
+        script = [
+            'tell application "System Events"',
+            'if not (exists process "Surfshark") then return "NO_PROCESS"',
+            'tell process "Surfshark"',
+            'if not (exists window 1) then return "NO_WINDOW"',
+            'set targetButtons to buttons of entire contents of window 1 whose name contains "Quick-connect"',
+            'if (count of targetButtons) is 0 then set targetButtons to buttons of entire contents of window 1 whose description contains "Quick-connect"',
+            'if (count of targetButtons) is 0 then return "NO_BUTTON"',
+            'perform action "AXPress" of item 1 of targetButtons',
+            'return "PRESSED"',
+            'end tell',
+            'end tell',
+        ]
+        completed = subprocess.run(
+            ["osascript", *sum([["-e", line] for line in script], [])],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if completed.returncode == 0 and completed.stdout.strip() == "PRESSED":
+            return completed
+        return subprocess.CompletedProcess(completed.args, 1, completed.stdout, completed.stderr)
+
+    def resolve_surfshark_quick_connect_point(self) -> tuple[int, int]:
+        if self.surfshark_quick_connect_relative_point:
+            window_position = self.surfshark_window_position()
+            if window_position:
+                window_x, window_y = window_position
+                relative_x, relative_y = self.surfshark_quick_connect_relative_point
+                return window_x + relative_x, window_y + relative_y
+        return self.surfshark_quick_connect_point
+
+    def surfshark_window_position(self) -> tuple[int, int] | None:
+        script = [
+            'tell application "System Events"',
+            'if not (exists process "Surfshark") then return "NO_PROCESS"',
+            'tell process "Surfshark"',
+            'if not (exists window 1) then return "NO_WINDOW"',
+            'set p to position of window 1',
+            'return ((item 1 of p) as text) & "," & ((item 2 of p) as text)',
+            'end tell',
+            'end tell',
+        ]
+        completed = subprocess.run(
+            ["osascript", *sum([["-e", line] for line in script], [])],
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        if completed.returncode != 0:
+            return None
+        try:
+            x_text, y_text = completed.stdout.strip().split(",", 1)
+            return int(float(x_text)), int(float(y_text))
+        except ValueError:
+            return None
 
     def cancel_codex_task(self, message_id: str) -> int:
         status = self.read_codex_status()
@@ -846,6 +908,12 @@ def parse_point(value: str) -> tuple[int, int]:
     if not separator:
         raise AgentError(f"Invalid point: {value}")
     return int(x_text.strip()), int(y_text.strip())
+
+
+def parse_optional_point(value: str) -> tuple[int, int] | None:
+    if not value.strip():
+        return None
+    return parse_point(value)
 
 
 def shell_word(value: str) -> str:

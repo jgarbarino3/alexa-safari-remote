@@ -53,6 +53,7 @@ ensure_config_value "CODEX_NEW_CHAT_ON_OPEN" "1"
 ensure_config_value "SURFSHARK_PREPARE_ON_LIVE_PROMPT" "1"
 ensure_config_value "SURFSHARK_SEARCH_POINT" "325,130"
 ensure_config_value "SURFSHARK_QUICK_CONNECT_POINT" "723,501"
+ensure_config_value "SURFSHARK_QUICK_CONNECT_RELATIVE_POINT" ""
 replace_config_value_if_exact "SURFSHARK_QUICK_CONNECT_POINT" "1220,1065" "723,501"
 ensure_config_value "SURFSHARK_CONNECT_SETTLE_SECONDS" "3.0"
 if command -v cliclick >/dev/null 2>&1; then

@@ -228,6 +228,62 @@ class AgentProcessingTest(unittest.TestCase):
             self.assertIn("action=surfshark_disconnect", log_text)
             self.assertIn("ok=True", log_text)
 
+    def test_surfshark_quick_connect_prefers_accessibility_button(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+
+            class FakeAgent(agent.SqsAgent):
+                def __init__(self):
+                    super().__init__(
+                        {
+                            "QUEUE_URL": "https://example.invalid/queue",
+                            "CODEX_WORKSPACE_PATH": str(root),
+                            "CODEX_STATE_DIR": str(root / "state"),
+                            "AGENT_LOG_FILE": str(root / "agent.log"),
+                            "CLICK_TOOL_PATH": "/tmp/cliclick",
+                        }
+                    )
+                    self.resolved_click = False
+
+                def activate_surfshark(self):
+                    return agent.subprocess.CompletedProcess(["open"], 0, "", "")
+
+                def press_surfshark_quick_connect_button(self):
+                    return agent.subprocess.CompletedProcess(["osascript"], 0, "PRESSED\n", "")
+
+                def resolve_surfshark_quick_connect_point(self):
+                    self.resolved_click = True
+                    return (1, 2)
+
+            sqs_agent = FakeAgent()
+            completed = sqs_agent.quick_connect_surfshark()
+            self.assertEqual(completed.returncode, 0)
+            self.assertFalse(sqs_agent.resolved_click)
+
+    def test_surfshark_relative_point_uses_window_position(self):
+        sqs_agent = agent.SqsAgent(
+            {
+                "QUEUE_URL": "https://example.invalid/queue",
+                "CLICK_TOOL_PATH": "/tmp/cliclick",
+                "SURFSHARK_QUICK_CONNECT_POINT": "723,501",
+                "SURFSHARK_QUICK_CONNECT_RELATIVE_POINT": "304,316",
+            }
+        )
+        sqs_agent.surfshark_window_position = lambda: (419, 185)
+        self.assertEqual(sqs_agent.resolve_surfshark_quick_connect_point(), (723, 501))
+
+    def test_surfshark_relative_point_falls_back_to_absolute(self):
+        sqs_agent = agent.SqsAgent(
+            {
+                "QUEUE_URL": "https://example.invalid/queue",
+                "CLICK_TOOL_PATH": "/tmp/cliclick",
+                "SURFSHARK_QUICK_CONNECT_POINT": "723,501",
+                "SURFSHARK_QUICK_CONNECT_RELATIVE_POINT": "304,316",
+            }
+        )
+        sqs_agent.surfshark_window_position = lambda: None
+        self.assertEqual(sqs_agent.resolve_surfshark_quick_connect_point(), (723, 501))
+
     def test_live_codex_prompt_requires_armed_state(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

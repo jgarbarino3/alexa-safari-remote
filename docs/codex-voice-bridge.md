@@ -91,6 +91,31 @@ Keep the Surfshark window in its normal top/Quick-connect view; if the locations
 list is scrolled so that another country sits under the click point, the helper
 can select that visible row instead.
 
+If HDMI/display layout changes move Surfshark, recalibrate while connected to
+the TV:
+
+```sh
+./scripts/calibrate-surfshark-click.sh
+```
+
+The calibration stores both the absolute Quick-connect point and a
+window-relative point. The agent now tries Surfshark's Accessibility
+`Quick-connect` button first, then the window-relative point, then the legacy
+absolute point.
+
+For live Codex fallback work on this Intel TV Mac, prefer the configured
+CursorTouch/MacOS-MCP server over coordinate-only clicking:
+
+```sh
+uvx macos-mcp serve
+```
+
+It supports screenshot-driven macOS automation and can be used by Codex when the
+native Surfshark UI needs inspection. `mac-use-mcp` also runs on this Intel Mac
+with `npx -y mac-use-mcp`, but is lighter. `native-devtools-mcp` is not suitable
+for this Intel Mac because its npm package currently reports macOS support for
+Apple Silicon only.
+
 ## Love Island Routine
 
 For the shortest phrase, create an Alexa Routine in the mobile app:
@@ -200,6 +225,7 @@ CODEX_NEW_CHAT_ON_OPEN=1
 SURFSHARK_PREPARE_ON_LIVE_PROMPT=1
 SURFSHARK_SEARCH_POINT=325,130
 SURFSHARK_QUICK_CONNECT_POINT=723,501
+SURFSHARK_QUICK_CONNECT_RELATIVE_POINT=<optional x,y from Surfshark window>
 SURFSHARK_CONNECT_SETTLE_SECONDS=3.0
 CLICK_TOOL_PATH=/usr/local/bin/cliclick
 ```
