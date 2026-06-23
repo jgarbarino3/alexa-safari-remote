@@ -64,7 +64,7 @@ class SqsAgent:
         self.codex_state_dir = Path(config.get("CODEX_STATE_DIR", str(DEFAULT_CODEX_STATE_DIR))).expanduser()
         self.browser_worker = Path(config.get("BROWSER_WORKER_PATH", str(DEFAULT_BROWSER_WORKER))).expanduser()
         self.live_codex_delay = float(config.get("LIVE_CODEX_FOCUS_DELAY_SECONDS", "0.8"))
-        self.codex_new_chat_on_open = config.get("CODEX_NEW_CHAT_ON_OPEN", "1").strip().lower() not in {"0", "false", "no"}
+        self.codex_new_chat_on_open = config.get("CODEX_NEW_CHAT_ON_OPEN", "0").strip().lower() not in {"0", "false", "no"}
         self.surfshark_prepare_on_live_prompt = config.get("SURFSHARK_PREPARE_ON_LIVE_PROMPT", "1").strip().lower() not in {"0", "false", "no"}
         self.surfshark_search_point = parse_point(config.get("SURFSHARK_SEARCH_POINT", "325,130"))
         self.surfshark_quick_connect_point = parse_point(config.get("SURFSHARK_QUICK_CONNECT_POINT", "723,501"))
@@ -870,30 +870,19 @@ def live_codex_prompt_text(prompt: str, surfshark_country: str = "", surfshark_p
 
 def love_island_live_prompt_text(vpn_ok: bool = False, peacock_opened: bool = False) -> str:
     vpn_note = (
-        "The Mac helper already attempted Surfshark USA Fastest before sending this prompt."
+        "Surfshark USA Fastest was attempted."
         if vpn_ok
-        else "The Mac helper attempted Surfshark USA Fastest but could not confirm the local click succeeded."
+        else "Surfshark USA Fastest may need checking."
     )
     peacock_note = (
-        "The Mac helper already opened Peacock in Chrome."
+        "Peacock is already open in Chrome."
         if peacock_opened
-        else "The Mac helper could not confirm Peacock opened, so open Peacock in Chrome yourself."
+        else "Open Peacock in Chrome."
     )
     return (
-        "User voice prompt: love island\n\n"
-        + vpn_note
-        + " "
-        + peacock_note
-        + "\n\nUse Google Chrome and Peacock's visible UI only. Do not open browser history or other protected local browser data. "
-        "If Peacock shows a profile picker, choose the profile named Lillia. "
-        "If Chrome is on a Peacock Not Found or broken search page, first open https://www.peacocktv.com/ in Chrome. "
-        "Find Love Island using Peacock's visible home/search UI, defaulting to Love Island USA if Peacock offers multiple versions. "
-        "Use Peacock's visible Continue Watching, watch-progress, search results, and episode pages to resume the episode the user was watching. "
-        "If the exact episode cannot be determined without an approval prompt, choose the most likely Continue Watching item; if none exists, leave the Love Island page visible and say what is needed. "
-        "Start playback, make the playback tab the selected/front tab, activate Google Chrome, then use Chrome presentation fullscreen with Command+Shift+F; this worked better than Peacock's own fullscreen HUD. "
-        "Verify fullscreen with a real macOS screencapture, not only a browser viewport screenshot; DRM may make the video area black, but Chrome tabs/address bar should be gone. "
-        "Before ending, do one final visual/state check that Google Chrome, not Codex, is the frontmost app; the selected tab is the actual Love Island playback URL, not a search/profile/error tab; Love Island is visible or playing; and Chrome tabs/address bar are gone. "
-        "If fullscreen missed or Codex is still frontmost, switch back to Chrome, send Command+Shift+F once more, and check again. If login, region block, CAPTCHA, or another user-only blocker appears, leave that blocker visible in Chrome and say what is needed."
+        "Use the resume-love-island-peacock skill now. "
+        f"{vpn_note} {peacock_note} "
+        "Resume Love Island on Peacock, select Lillia if prompted, play it, and leave Chrome frontmost in fullscreen."
     )
 
 

@@ -103,6 +103,13 @@ window-relative point. The agent now tries Surfshark's Accessibility
 `Quick-connect` button first, then the window-relative point, then the legacy
 absolute point.
 
+On the current HDMI TV layout, the verified Quick-connect click is:
+
+```text
+absolute: 1437,725
+window-relative: 704,540
+```
+
 For live Codex fallback work on this Intel TV Mac, prefer the configured
 CursorTouch/MacOS-MCP server over coordinate-only clicking:
 
@@ -165,9 +172,10 @@ codex app "$CODEX_WORKSPACE_PATH"
 ```
 
 It also arms prompt intake for `CODEX_ARM_SECONDS`, default `600`.
-By default it also sends Command-N to Codex after opening, as a best-effort new
-chat shortcut. Set `CODEX_NEW_CHAT_ON_OPEN=0` in the local config to disable
-that if Codex changes its shortcut behavior.
+By default it reuses the current Codex thread. Set `CODEX_NEW_CHAT_ON_OPEN=1`
+only if each voice run should force a fresh chat with Command-N after opening.
+The workspace must remain the `alexa-safari-remote` repo so live prompts land in
+that reusable project thread, not in an unrelated control/chat thread.
 
 `codex_task` runs:
 
@@ -221,11 +229,11 @@ CODEX_ARM_SECONDS=600
 CODEX_TASK_TIMEOUT_SECONDS=600
 BROWSER_WORKER_PATH=<installed chrome-worker.py path>
 LIVE_CODEX_FOCUS_DELAY_SECONDS=0.8
-CODEX_NEW_CHAT_ON_OPEN=1
+CODEX_NEW_CHAT_ON_OPEN=0
 SURFSHARK_PREPARE_ON_LIVE_PROMPT=1
 SURFSHARK_SEARCH_POINT=325,130
 SURFSHARK_QUICK_CONNECT_POINT=723,501
-SURFSHARK_QUICK_CONNECT_RELATIVE_POINT=<optional x,y from Surfshark window>
+SURFSHARK_QUICK_CONNECT_RELATIVE_POINT=704,540
 SURFSHARK_CONNECT_SETTLE_SECONDS=3.0
 CLICK_TOOL_PATH=/usr/local/bin/cliclick
 ```
